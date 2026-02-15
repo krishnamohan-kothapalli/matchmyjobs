@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Your MatchMyJobs resume analysis results - ATS score, skill gaps, and improvement suggestions">
+  <title>Resume Analysis Report | MatchMyJobs</title>
+  
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Berkeley+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/audit.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  
+  <!-- DOMPurify for sanitization -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  
+  <!-- Analytics -->
+  <script defer data-domain="matchmyjobs.com" src="https://plausible.io/js/script.js"></script>
+</head>
+<body>
+
+  <!-- Skip link for accessibility -->
+  <a href="#main-content" class="skip-link">Skip to results</a>
+
+  <!-- Navigation -->
+  <nav class="nav" role="navigation">
+    <div class="nav-content">
+      <a href="index.html" class="logo logo-styled">
+        <span class="logo-match">MATCH</span>
+        <span class="logo-myjobs">MY JOBS</span>
+      </a>
+      <div class="nav-right">
+        <span class="report-id" id="report-id" aria-label="Report ID">MM-XXXXXX</span>
+        <button class="btn-primary btn-sm" onclick="showSuggestionsModal()" aria-label="View AI suggestions and optimize">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style="margin-right: 0.25rem;">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+          AI Suggestions & Optimize
+        </button>
+        <button class="btn-secondary btn-sm" onclick="window.location.href='index.html'" aria-label="Start new analysis">
+          New Analysis
+        </button>
+        <button class="btn-secondary btn-sm" onclick="window.print()" aria-label="Print or save report as PDF">
+          Save as PDF
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container" id="main-content">
+    
+    <!-- Sidebar Score Card -->
+    <aside class="sidebar">
+      <div class="score-card">
+        <span class="score-label">Match Score</span>
+        <div class="score-ring">
+          <svg width="160" height="160" aria-hidden="true">
+            <circle cx="80" cy="80" r="72" fill="none" stroke="#e5e7eb" stroke-width="12"/>
+            <circle id="score-circle" cx="80" cy="80" r="72" fill="none" stroke="#10b981" stroke-width="12"
+                    stroke-dasharray="452.389" stroke-dashoffset="452.389" 
+                    transform="rotate(-90 80 80)" stroke-linecap="round"/>
+          </svg>
+          <div class="score-number" id="score-number" aria-live="polite">0</div>
+        </div>
+        <div class="score-status" id="score-status" aria-live="polite">Calculating...</div>
+        <p class="score-message" id="score-message"></p>
+
+        <!-- Score breakdown -->
+        <div class="breakdown-section">
+          <span class="breakdown-label">Score Breakdown</span>
+          <div id="score-breakdown"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <section class="content">
+
+      <!-- Skills Analysis -->
+      <div class="report-card">
+        <div class="card-header">
+          <span class="card-label">Keyword Analysis</span>
+          <h2>Skills Breakdown</h2>
+          <p class="card-subtitle">AI-extracted skills compared against job requirements</p>
+        </div>
+
+        <div class="skills-section">
+          <div class="skills-group">
+            <div class="skills-header">
+              <span class="skills-label matched">✓ Matched Skills</span>
+              <span class="skills-count" id="matched-count" aria-label="Number of matched skills">0</span>
+            </div>
+            <div id="matched-tags" class="tag-cloud"></div>
+          </div>
+
+          <div class="skills-group">
+            <div class="skills-header">
+              <span class="skills-label missing">✕ Missing Skills</span>
+              <span class="skills-count" id="missing-count" aria-label="Number of missing skills">0</span>
+            </div>
+            <div id="missing-tags" class="tag-cloud"></div>
+          </div>
+
+          <div class="skills-group">
+            <div class="skills-header">
+              <span class="skills-label soft">◆ Soft Skills</span>
+              <span class="skills-count" id="soft-count" aria-label="Number of soft skills detected">0</span>
+            </div>
+            <div id="soft-tags" class="tag-cloud"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ATS Diagnostic Sections -->
+      <div id="audit-sections"></div>
+
+      <!-- Keyword Density Chart -->
+      <div class="report-card">
+        <div class="card-header">
+          <span class="card-label">Statistical Analysis</span>
+          <h2>Keyword Density</h2>
+          <p class="card-subtitle" id="density-explanation"></p>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="densityChart" role="img" aria-label="Bar chart comparing keyword frequency between job description and resume"></canvas>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="js/results.js"></script>
+</body>
+</html>

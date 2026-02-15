@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - MatchMyJobs</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-content">
+      <a href="index.html" class="logo logo-styled">
+        <span class="logo-match">MATCH</span>
+        <span class="logo-myjobs">MY JOBS</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Auth Container -->
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('signin')" id="tab-signin">
+          Sign In
+        </button>
+        <button class="auth-tab" onclick="switchTab('signup')" id="tab-signup">
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form class="auth-form" id="form-signin">
+        <h2>Welcome Back</h2>
+        <p class="auth-subtitle">Sign in to continue analyzing resumes</p>
+
+        <div class="form-group">
+          <label for="signin-email">Email</label>
+          <input 
+            type="email" 
+            id="signin-email" 
+            placeholder="you@example.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signin-password">Password</label>
+          <input 
+            type="password" 
+            id="signin-password" 
+            placeholder="••••••••"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn-primary btn-block btn-large">
+          Sign In
+        </button>
+
+        <p class="auth-hint">
+          Don't have an account? <a href="#" onclick="switchTab('signup'); return false;">Sign up free</a>
+        </p>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form class="auth-form" id="form-signup" style="display: none;">
+        <h2>Get Started Free</h2>
+        <p class="auth-subtitle">Create an account and get 2 free analyses</p>
+
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <input 
+            type="text" 
+            id="signup-name" 
+            placeholder="Jane Doe"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input 
+            type="email" 
+            id="signup-email" 
+            placeholder="you@example.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input 
+            type="password" 
+            id="signup-password" 
+            placeholder="At least 8 characters"
+            required
+            minlength="8"
+          >
+        </div>
+
+        <button type="submit" class="btn-primary btn-block btn-large">
+          Create Account
+        </button>
+
+        <p class="auth-benefits">
+          ✓ 2 free resume analyses<br>
+          ✓ Full compatibility reports<br>
+          ✓ No credit card required
+        </p>
+
+        <p class="auth-hint">
+          Already have an account? <a href="#" onclick="switchTab('signin'); return false;">Sign in</a>
+        </p>
+      </form>
+    </div>
+
+    <div class="auth-features">
+      <div class="feature-item">
+        <div class="feature-num">2</div>
+        <p>Free analyses to start</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-num">&lt;5s</div>
+        <p>Get results instantly</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-num">92%</div>
+        <p>Average match score</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>

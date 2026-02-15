@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Professional ATS resume analysis with AI-powered insights">
+  <title>MatchMyJobs — AI-Powered ATS Resume Analysis</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/index.css">
+  
+  <script defer data-domain="matchmyjobs.com" src="https://plausible.io/js/script.js"></script>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-content">
+      <div class="logo logo-styled">
+        <span class="logo-match">MATCH</span>
+        <span class="logo-myjobs">MY JOBS</span>
+      </div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it Works</a>
+        <a href="#pricing">Pricing</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Powered by Advanced AI
+      </div>
+      
+      <h1 class="hero-title">
+        Does Your Resume Match?<br>
+        <span class="gradient-text">We'll Tell You Before You Apply.</span>
+      </h1>
+      
+      <p class="hero-subtitle">
+        Stop wondering if your resume is good enough. Get an instant, honest compatibility score 
+        for any job posting. Know exactly what to fix before you hit "submit."
+      </p>
+      
+      <div class="hero-actions">
+        <button class="btn-primary btn-large" onclick="checkAuthAndAnalyze()">
+          <span>Analyze Resume</span>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <p class="hero-hint">2 free analyses • No credit card required</p>
+      </div>
+      
+      <!-- Stats -->
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-number">92%</div>
+          <div class="stat-label">Average Match Score</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <div class="stat-number">&lt;5s</div>
+          <div class="stat-label">Analysis Time</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <div class="stat-number">6</div>
+          <div class="stat-label">ATS Platforms</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Visual Element -->
+    <div class="hero-visual">
+      <div class="visual-card">
+        <div class="visual-header">
+          <div class="visual-title">Resume Analysis</div>
+          <div class="visual-badge">Live</div>
+        </div>
+        <div class="visual-score">
+          <svg class="score-ring" width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="54" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="#10b981" stroke-width="8"
+                    stroke-dasharray="339.292" stroke-dashoffset="101.788" 
+                    transform="rotate(-90 60 60)" stroke-linecap="round"
+                    class="score-circle-animated"/>
+          </svg>
+          <div class="score-number-visual">92</div>
+        </div>
+        <div class="visual-metrics">
+          <div class="metric">
+            <div class="metric-label">Skills Match</div>
+            <div class="metric-bar">
+              <div class="metric-fill" style="width: 87%"></div>
+            </div>
+            <div class="metric-value">87%</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">ATS Compatibility</div>
+            <div class="metric-bar">
+              <div class="metric-fill" style="width: 95%"></div>
+            </div>
+            <div class="metric-value">95%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What We Do -->
+  <section class="what-we-do">
+    <div class="section-content">
+      <div class="what-we-do-grid">
+        <div class="what-we-do-content">
+          <span class="section-label">What We Do</span>
+          <h2>We Check If Your Resume Will Actually Get Read</h2>
+          <p class="lead-text">
+            Here's the truth: <strong>75% of resumes never reach a human.</strong> They're filtered out 
+            by Applicant Tracking Systems (ATS) before a recruiter even sees them.
+          </p>
+          <p>
+            We analyze your resume against the exact job description you're applying to, just like these 
+            systems do. You'll see your compatibility score, what's missing, and exactly what to fix—before 
+            you waste time applying.
+          </p>
+          <div class="trust-indicators">
+            <div class="trust-item">
+              <div class="trust-number">6</div>
+              <div class="trust-label">Major ATS Platforms Tested</div>
+            </div>
+            <div class="trust-item">
+              <div class="trust-number">92%</div>
+              <div class="trust-label">Average Match Score Improvement</div>
+            </div>
+            <div class="trust-item">
+              <div class="trust-number">&lt;5s</div>
+              <div class="trust-label">Analysis Time</div>
+            </div>
+          </div>
+        </div>
+        <div class="what-we-do-visual">
+          <div class="process-steps">
+            <div class="process-step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h4>You Upload</h4>
+                <p>Your resume + the job description you want</p>
+              </div>
+            </div>
+            <div class="process-step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h4>We Analyze</h4>
+                <p>AI compares them like a real ATS system would</p>
+              </div>
+            </div>
+            <div class="process-step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h4>You Get Answers</h4>
+                <p>Exact score, missing skills, and what to fix</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="features-section">
+    <div class="section-content">
+      <div class="section-header">
+        <h2>Everything You Need to Pass The Screeners</h2>
+        <p>We check what actually matters to hiring systems and recruiters</p>
+      </div>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>Keyword Match Score</h3>
+          <p>See exactly which required skills you have—and which ones you're missing. We find matches even 
+          when you use different words (like "UI/UX" matching "user experience design").</p>
+        </div>
+        
+        <div class="feature-card">
+          <h3>7-Point Compatibility Check</h3>
+          <p>We grade you on keyword overlap, skill placement, experience level, formatting, contact info, 
+          impact metrics, and more. You'll know exactly where you stand.</p>
+        </div>
+        
+        <div class="feature-card">
+          <h3>Fix-It-Now Suggestions</h3>
+          <p>No vague advice. Get 5 copy-paste ready improvements ranked by impact. Each one tells you 
+          what's wrong, how to fix it, and why it matters.</p>
+        </div>
+        
+        <div class="feature-card">
+          <h3>Works With Your Files</h3>
+          <p>Upload your resume as PDF or Word doc, or just paste the text. We handle the formatting 
+          so you can focus on the content.</p>
+        </div>
+        
+        <div class="feature-card">
+          <h3>Your Privacy Protected</h3>
+          <p>We analyze your resume and immediately delete it. Zero data retention. Your information 
+          never gets stored or shared—ever.</p>
+        </div>
+        
+        <div class="feature-card">
+          <h3>Results in Seconds</h3>
+          <p>No waiting days for feedback. Get your complete analysis in under 5 seconds. Export a 
+          professional PDF report if you need it later.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how-it-works" class="how-it-works">
+    <div class="section-content">
+      <div class="section-header">
+        <h2>How It Works</h2>
+        <p>Three simple steps to a better resume</p>
+      </div>
+      
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Upload Resume</h3>
+            <p>Upload your PDF/DOCX resume or paste the text. Include a target job description.</p>
+          </div>
+        </div>
+        
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>AI Analysis</h3>
+            <p>Claude AI extracts skills, matches requirements, and scores your compatibility across 6 ATS platforms.</p>
+          </div>
+        </div>
+        
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Get Results</h3>
+            <p>View your score, missing skills, and actionable improvements. Copy suggested fixes directly into your resume.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="pricing-section">
+    <div class="section-content">
+      <div class="section-header">
+        <h2>Student-Friendly Pricing</h2>
+        <p>Pay once, use forever. No subscriptions.</p>
+      </div>
+      
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <h3>Free</h3>
+          <div class="price">$0<span>/forever</span></div>
+          <div class="price-description">Get started with 2 free analyses</div>
+          <ul class="pricing-features">
+            <li>✓ 2 free resume analyses</li>
+            <li>✓ Full compatibility reports</li>
+            <li>✓ AI-powered suggestions</li>
+            <li>✓ All 6 ATS platforms tested</li>
+            <li>✓ No credit card required</li>
+          </ul>
+          <button class="btn-secondary btn-block" onclick="showSignupModal()">
+            Sign Up Free
+          </button>
+        </div>
+        
+        <div class="pricing-card pricing-featured">
+          <div class="pricing-badge">Most Popular</div>
+          <h3>Analysis Pro</h3>
+          <div class="price">$20<span>/lifetime</span></div>
+          <div class="price-description">Perfect for active job seekers</div>
+          <ul class="pricing-features">
+            <li>✓ <strong>50 analyses per month</strong></li>
+            <li>✓ Resets every month</li>
+            <li>✓ Analysis history saved</li>
+            <li>✓ Priority processing</li>
+            <li>✓ Export PDF reports</li>
+            <li>✓ Email support</li>
+          </ul>
+          <button class="btn-primary btn-block" onclick="showUpgradeModal('analysis')">
+            Buy for $20
+          </button>
+          <div class="pricing-note">One-time payment • Lifetime access</div>
+        </div>
+        
+        <div class="pricing-card">
+          <div class="pricing-badge">Premium</div>
+          <h3>Optimize & Download</h3>
+          <div class="price">$30<span>/lifetime</span></div>
+          <div class="price-description">AI rewrites your resume</div>
+          <ul class="pricing-features">
+            <li>✓ <strong>Everything in Analysis Pro</strong></li>
+            <li>✓ <strong>25 optimizations per month</strong></li>
+            <li>✓ Download optimized DOCX files</li>
+            <li>✓ Auto-tailor to job descriptions</li>
+            <li>✓ ATS-guaranteed formatting</li>
+            <li>✓ Priority support</li>
+          </ul>
+          <button class="btn-primary btn-block" onclick="showUpgradeModal('optimize')">
+            Buy for $30
+          </button>
+          <div class="pricing-note">One-time payment • Lifetime access</div>
+        </div>
+      </div>
+      
+      <div class="pricing-faq">
+        <div class="faq-item">
+          <strong>What happens after my 2 free analyses?</strong>
+          <p>You'll need to upgrade to continue. Choose the plan that fits your needs.</p>
+        </div>
+        <div class="faq-item">
+          <strong>What does "lifetime" mean?</strong>
+          <p>Pay once, use forever. No monthly fees, ever. Your monthly limits reset automatically.</p>
+        </div>
+        <div class="faq-item">
+          <strong>Why monthly limits on lifetime plans?</strong>
+          <p>Keeps our AI costs sustainable while giving you plenty of analyses for serious job searching (50/month = 1-2 per day).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <div class="logo logo-styled">
+          <span class="logo-match">MATCH</span>
+          <span class="logo-myjobs">MY JOBS</span>
+        </div>
+        <p>AI-powered resume matching for the modern job market.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Product</h4>
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it Works</a>
+          <a href="#pricing">Pricing</a>
+        </div>
+        <div class="footer-col">
+          <h4>Support</h4>
+          <a href="mailto:hello@matchmyjobs.com">Contact</a>
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 MatchMyJobs. Your resume, perfectly matched.</p>
+    </div>
+  </footer>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-overlay" onclick="closeUploadModal()"></div>
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modal-title">Analyze Your Resume</h2>
+        <button class="modal-close" onclick="closeUploadModal()" aria-label="Close">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Side-by-side layout -->
+        <div class="input-grid">
+          <!-- Left: Resume Upload -->
+          <div class="input-column">
+            <label class="upload-label">
+              Resume
+              <span class="label-hint">Upload PDF or DOCX</span>
+            </label>
+            <div class="upload-area" id="resume-upload" onclick="document.getElementById('resume-file').click()">
+              <input type="file" id="resume-file" accept=".pdf,.doc,.docx" hidden onchange="handleFileUpload(this, 'resume')">
+              <div class="upload-icon">📄</div>
+              <div class="upload-text">
+                <strong>Click to upload</strong> or drag and drop
+              </div>
+              <div class="upload-hint">PDF or DOCX (max 10MB)</div>
+              <div class="upload-filename" id="resume-filename"></div>
+            </div>
+            <div class="or-divider">
+              <span>or paste text</span>
+            </div>
+            <textarea id="resume-paste" placeholder="Paste resume text here..." class="compact-textarea"></textarea>
+          </div>
+          
+          <!-- Right: JD Paste (Primary) -->
+          <div class="input-column">
+            <label class="paste-label">
+              Job Description
+              <span class="label-hint">Paste from job posting</span>
+            </label>
+            <textarea id="jd-paste" placeholder="Paste the job description here...
+
+Example:
+Senior UX Designer
+Requirements:
+• 5+ years experience
+• Expert in Figma
+• Strong portfolio..." class="primary-textarea"></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="clearAllInputs()">
+          Clear All
+        </button>
+        <div style="display: flex; gap: 1rem; margin-left: auto;">
+          <button class="btn-secondary" onclick="loadSampleData()">
+            Use Sample Data
+          </button>
+          <button class="btn-primary" onclick="startAnalysis()">
+            Analyze Resume
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo logo-styled">
+        <span class="logo-match">MATCH</span>
+        <span class="logo-myjobs">MY JOBS</span>
+      </div>
+      
+      <div class="loading-animation">
+        <div class="loading-circle"></div>
+        <div class="loading-circle"></div>
+        <div class="loading-circle"></div>
+      </div>
+      
+      <div class="loading-text" id="loading-text">Uploading files...</div>
+      
+      <div class="loading-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-percentage" id="progress-percentage">0%</div>
+      </div>
+      
+      <div class="loading-steps" id="loading-steps">
+        <div class="loading-step">
+          <div class="step-icon">✓</div>
+          <div class="step-text">Parsing documents</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

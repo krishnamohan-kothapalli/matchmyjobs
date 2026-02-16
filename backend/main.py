@@ -7,6 +7,7 @@ import logging
 import os
 from models import AnalysisRequest
 from engine import nlp, run_analysis
+from auth_google import router as google_auth_router
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -16,6 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="MatchMetric API", version="3.0")
+app.include_router(google_auth_router)
 
 # CORS configuration
 ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")

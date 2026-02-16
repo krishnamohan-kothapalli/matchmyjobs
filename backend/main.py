@@ -4,7 +4,7 @@ load_dotenv()  # must be first — loads .env before engine imports read ANTHROP
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-
+import os
 from models import AnalysisRequest
 from engine import nlp, run_analysis
 

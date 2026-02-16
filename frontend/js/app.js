@@ -6,7 +6,7 @@
 const CONFIG = {
   API_BASE: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? "http://127.0.0.1:8000"
-    : "https://matchmyjobs-api.onrender.com", // Update with your production API
+    : "https://matchmyjobs.onrender.com", // Update with your production API
   
   MAX_FILE_SIZE: {
     resume: 10 * 1024 * 1024, // 10MB

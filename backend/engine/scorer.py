@@ -97,12 +97,22 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
         
         # Convert ATS breakdown to legacy score_breakdown format
         breakdown = ats_results["breakdown"]
+        
+        # Normalize keyword and placement scores for display
+        # (Backend uses 30/20 max, frontend expects as percentage of their contribution)
+        keyword_normalized = (breakdown["keyword_match"]["score"] / 40) * 30  # Show as /30
+        placement_normalized = (breakdown["keyword_placement"]["score"] / 25) * 20  # Show as /20
+        
         legacy_breakdown = {
-            "keyword_overlap": breakdown["keyword_match"]["score"],
-            "keyword_placement": breakdown["keyword_placement"]["score"],
+            "keyword_overlap": round(keyword_normalized, 1),
+            "keyword_placement": round(placement_normalized, 1),
             "experience": breakdown["experience"]["score"],
             "education": breakdown["education"]["score"],
             "formatting": breakdown["formatting"]["score"],
+            "contact": breakdown["contact_info"]["score"],
+            "structure": breakdown["document_structure"]["score"],
+            "impact": breakdown["quantified_impact"]["score"],
+            "seniority": breakdown["seniority_match"]["score"],
             "penalties": 0  # No longer using penalties
         }
         
@@ -158,12 +168,45 @@ def _build_audit_sections(breakdown: dict, extraction: dict) -> dict:
     experience = breakdown["experience"]
     education = breakdown["education"]
     formatting = breakdown["formatting"]
+    contact = breakdown["contact_info"]
+    structure = breakdown["document_structure"]
+    impact = breakdown["quantified_impact"]
+    seniority = breakdown["seniority_match"]
     
     matched = len(extraction.get("matched_skills", []))
     required = len(extraction.get("jd_required_skills", []))
     match_rate = keyword_match.get("match_rate", 0)
     
     return {
+        "Contact & Searchability": [
+            {
+                "status": "hit" if contact["has_email"] else "miss",
+                "msg": "Email detected. ATS can contact you." if contact["has_email"] else 
+                       "Email missing. All ATS systems require email for communication."
+            },
+            {
+                "status": "hit" if contact["has_phone"] else "miss",
+                "msg": "Phone detected. Interview scheduling possible." if contact["has_phone"] else
+                       "Phone missing. ATS systems require phone for scheduling."
+            },
+            {
+                "status": "hit" if contact["has_location"] else "miss",
+                "msg": contact["ats_behavior"]
+            }
+        ],
+        
+        "Document Structure": [
+            {
+                "status": "hit" if structure["score"] >= 4 else "miss",
+                "msg": structure["ats_behavior"]
+            },
+            {
+                "status": "hit" if structure["has_dates"] else "miss",
+                "msg": "Chronological dates detected. Work history timeline clear." if structure["has_dates"] else
+                       "Dates missing. ATS systems need dates to calculate experience."
+            }
+        ],
+        
         "Keyword Intelligence": [
             {
                 "status": "hit" if keyword_match["score"] >= 30 else "miss",
@@ -189,6 +232,23 @@ def _build_audit_sections(breakdown: dict, extraction: dict) -> dict:
             {
                 "status": "hit" if education["score"] == 10 else "miss",
                 "msg": education["ats_behavior"]
+            },
+            {
+                "status": "hit" if seniority["match"] else "miss",
+                "msg": seniority["ats_behavior"]
+            }
+        ],
+        
+        "Impact & Results": [
+            {
+                "status": "hit" if impact["score"] >= 3 else "miss",
+                "msg": impact["ats_behavior"]
+            },
+            {
+                "status": "hit" if impact["metrics_count"] >= 5 else "miss",
+                "msg": f"Metrics count: {impact['metrics_count']} quantified achievements. " +
+                       ("Strong impact signals throughout resume." if impact["metrics_count"] >= 5 else
+                        "Add more numbers/metrics to experience bullets.")
             }
         ],
         

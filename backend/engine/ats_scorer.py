@@ -421,19 +421,231 @@ def score_formatting(resume_text: str) -> Dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# MASTER SCORING FUNCTION
+# COMPONENT 6: CONTACT INFORMATION (5 points)
+# Based on all ATS systems - required for candidate profile creation
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def score_contact_info(resume_text: str) -> Dict:
+    """
+    Contact Information Completeness
+    
+    Research: ALL ATS systems require basic contact info
+    - Email: Required for communication
+    - Phone: Required for scheduling
+    - Location: Required for regional filtering (Workday/iCIMS)
+    - LinkedIn: Bonus for profile enrichment (Greenhouse/Lever)
+    
+    Returns:
+        score: 0-5 points
+    """
+    import re
+    
+    # Email detection
+    has_email = bool(re.search(r'[\w\.-]+@[\w\.-]+\.\w+', resume_text))
+    
+    # Phone detection
+    has_phone = bool(re.search(r'\(?\d{3}\)?[\s\.-]?\d{3}[\s\.-]?\d{4}', resume_text))
+    
+    # Location detection (City, State format)
+    has_location = bool(re.search(r'[A-Z][a-z]+,\s?[A-Z]{2,}', resume_text))
+    
+    # LinkedIn detection
+    has_linkedin = bool(re.search(r'linkedin\.com/in/[\w\-]+', resume_text, re.IGNORECASE))
+    
+    # Scoring
+    score = 0
+    issues = []
+    
+    if has_email:
+        score += 2
+    else:
+        issues.append("Missing email address")
+    
+    if has_phone:
+        score += 2
+    else:
+        issues.append("Missing phone number")
+    
+    if has_location:
+        score += 1
+    else:
+        issues.append("Missing location (City, State)")
+    
+    # LinkedIn is bonus (not required)
+    if has_linkedin:
+        score = min(score + 0.5, 5)  # Bonus but don't exceed 5
+    
+    # Behavior
+    if score >= 4:
+        behavior = "All ATS: Complete contact info. Profile auto-populated successfully."
+    elif score >= 2:
+        behavior = "All ATS: Partial contact info. May require manual entry."
+    else:
+        behavior = "All ATS: Critical contact info missing. Profile creation may fail."
+    
+    return {
+        "score": min(score, 5),
+        "has_email": has_email,
+        "has_phone": has_phone,
+        "has_location": has_location,
+        "has_linkedin": has_linkedin,
+        "issues": issues,
+        "ats_behavior": behavior
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 7: DOCUMENT STRUCTURE (5 points)
+# Based on Taleo/iCIMS parsing requirements
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def score_document_structure(resume_text: str) -> Dict:
+    """
+    Document Structure & Section Organization
+    
+    Research: Taleo and iCIMS have weak parsers
+    - Standard section headings required
+    - Chronological dates expected
+    - Simple format preferred
+    
+    Returns:
+        score: 0-5 points
+    """
+    resume_lower = resume_text.lower()
+    score = 0
+    issues = []
+    
+    # Check for standard sections
+    required_sections = {
+        "experience": ["experience", "work experience", "professional experience", "employment"],
+        "education": ["education", "academic", "qualifications"],
+        "skills": ["skills", "technical skills", "competencies"]
+    }
+    
+    sections_found = 0
+    for section_type, keywords in required_sections.items():
+        if any(keyword in resume_lower for keyword in keywords):
+            sections_found += 1
+        else:
+            issues.append(f"Missing standard {section_type.title()} section")
+    
+    # Score based on sections found
+    if sections_found == 3:
+        score += 3
+    elif sections_found == 2:
+        score += 2
+    else:
+        score += 1
+        issues.append("Multiple standard sections missing")
+    
+    # Check for dates (chronological history)
+    date_patterns = [
+        r'\d{4}',  # Year
+        r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)',  # Month
+        r'\d{1,2}/\d{4}'  # MM/YYYY
+    ]
+    
+    dates_found = 0
+    for pattern in date_patterns:
+        if re.search(pattern, resume_text, re.IGNORECASE):
+            dates_found += 1
+            break
+    
+    if dates_found > 0:
+        score += 2
+    else:
+        issues.append("No dates detected (timeline missing)")
+    
+    # Behavior
+    if score >= 4:
+        behavior = "Taleo/iCIMS: Standard structure detected. Clean parsing expected."
+    elif score >= 2:
+        behavior = "Taleo/iCIMS: Some structure issues. Partial data extraction likely."
+    else:
+        behavior = "Taleo/iCIMS: Poor structure. Parsing errors likely (data loss)."
+    
+    return {
+        "score": min(score, 5),
+        "sections_found": sections_found,
+        "has_dates": dates_found > 0,
+        "issues": issues,
+        "ats_behavior": behavior
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 8: QUANTIFIED IMPACT (5 points)
+# Based on Workday AI scoring research
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def score_quantified_impact(resume_text: str) -> Dict:
+    """
+    Quantified Achievements & Metrics
+    
+    Research: Workday's AI heavily weights measurable results
+    - Studies show resumes with metrics ranked 2-3 positions higher
+    - Recruiters spend 2x longer on resumes with numbers
+    
+    Returns:
+        score: 0-5 points
+    """
+    # Find quantifiable metrics
+    metric_patterns = [
+        r'\d+\s*%',  # Percentages: 30%
+        r'\$\s*\d+[KMB]?',  # Money: $2M, $500K
+        r'\d+\s*x\b',  # Multipliers: 3x
+        r'\d+\s*(users|clients|customers|team|engineers|people|reports)',  # Scale
+        r'\d+\s*(million|billion|thousand)',  # Large numbers
+        r'\d+\+\s*(years|months)',  # Time
+    ]
+    
+    metrics_found = 0
+    for pattern in metric_patterns:
+        metrics_found += len(re.findall(pattern, resume_text, re.IGNORECASE))
+    
+    # Scoring tiers
+    if metrics_found >= 8:
+        score = 5
+        tier = "excellent"
+        behavior = "Workday AI: High impact score. Metrics throughout resume = top-tier ranking."
+    elif metrics_found >= 5:
+        score = 4
+        tier = "good"
+        behavior = "Workday AI: Good impact signals. Several quantified achievements detected."
+    elif metrics_found >= 3:
+        score = 2.5
+        tier = "moderate"
+        behavior = "Workday AI: Some metrics present. Add more for higher ranking."
+    elif metrics_found >= 1:
+        score = 1
+        tier = "weak"
+        behavior = "Workday AI: Minimal metrics. Add numbers to improve ranking significantly."
+    else:
+        score = 0
+        tier = "none"
+        behavior = "Workday AI: No quantified results. Resume ranked lower than candidates with metrics."
+    
+    return {
+        "score": score,
+        "metrics_count": metrics_found,
+        "tier": tier,
+        "ats_behavior": behavior
+    }
 
 def calculate_ats_score(resume_text: str, extraction: Dict) -> Dict:
     """
     Industry-standard ATS scoring based on real systems.
     
-    Total: 100 points
-    - Keyword Match: 40 points (Workday model)
-    - Keyword Placement: 25 points (Greenhouse model)
-    - Experience: 15 points (Workday model)
+    Total: 100 points distributed across 9 components:
+    - Keyword Match: 30 points (Workday hard gates)
+    - Keyword Placement: 20 points (Greenhouse weighting)
+    - Experience: 15 points (Workday validation)
     - Education: 10 points (Binary gate)
-    - Formatting: 10 points (iCIMS/Taleo model)
+    - Formatting: 10 points (iCIMS parsing)
+    - Contact Info: 5 points (All ATS)
+    - Structure: 5 points (Taleo/iCIMS)
+    - Impact/Metrics: 5 points (Workday AI)
+    - Seniority: 5 points (Level matching)
     
     Returns comprehensive breakdown with ATS-specific behaviors.
     """
@@ -441,6 +653,7 @@ def calculate_ats_score(resume_text: str, extraction: Dict) -> Dict:
     matched_skills = extraction.get("matched_skills", [])
     required_skills = extraction.get("jd_required_skills", [])
     required_years = extraction.get("required_years", 0)
+    seniority_level = extraction.get("seniority_level", "mid")
     
     # Calculate each component
     keyword_match = score_keyword_match(matched_skills, required_skills)
@@ -448,29 +661,41 @@ def calculate_ats_score(resume_text: str, extraction: Dict) -> Dict:
     experience = score_experience_match(resume_text, required_years)
     education = score_education(resume_text, extraction)
     formatting = score_formatting(resume_text)
+    contact = score_contact_info(resume_text)
+    structure = score_document_structure(resume_text)
+    impact = score_quantified_impact(resume_text)
+    seniority = score_seniority_match(resume_text, seniority_level)
     
-    # Calculate final score
+    # Normalize scores to sum to 100
+    # Adjust keyword and placement from their max values
     final_score = (
-        keyword_match["score"] +
-        placement["score"] +
-        experience["score"] +
-        education["score"] +
-        formatting["score"]
+        (keyword_match["score"] / 40 * 30) +      # 30 points max
+        (placement["score"] / 25 * 20) +          # 20 points max
+        experience["score"] +                      # 15 points max (already correct)
+        education["score"] +                       # 10 points max (already correct)
+        formatting["score"] +                      # 10 points max (already correct)
+        contact["score"] +                         # 5 points max
+        structure["score"] +                       # 5 points max
+        impact["score"] +                          # 5 points max
+        seniority["score"]                         # 5 points max
     )
     
     # Determine overall tier
-    if final_score >= 80:
+    if final_score >= 85:
         tier = "excellent"
-        outlook = "Strong candidate. Likely to pass all ATS systems and reach recruiter review."
-    elif final_score >= 60:
+        outlook = "Top-tier candidate. Exceeds ATS thresholds across all systems."
+    elif final_score >= 70:
         tier = "good"
-        outlook = "Qualified candidate. Should pass most ATS filters with minor optimization."
-    elif final_score >= 40:
+        outlook = "Strong candidate. Should pass most ATS filters with minor optimization."
+    elif final_score >= 55:
         tier = "fair"
-        outlook = "Borderline candidate. May be filtered out by strict ATS systems. Needs improvement."
+        outlook = "Qualified candidate. Some gaps present but passable with improvements."
+    elif final_score >= 40:
+        tier = "borderline"
+        outlook = "Borderline candidate. Risk of auto-rejection in strict systems. Needs work."
     else:
         tier = "poor"
-        outlook = "High rejection risk. Significant gaps detected. Immediate optimization required."
+        outlook = "High rejection risk. Critical gaps detected. Immediate optimization required."
     
     logger.info(f"ATS Score calculated: {final_score}/100 ({tier})")
     
@@ -483,14 +708,91 @@ def calculate_ats_score(resume_text: str, extraction: Dict) -> Dict:
             "keyword_placement": placement,
             "experience": experience,
             "education": education,
-            "formatting": formatting
+            "formatting": formatting,
+            "contact_info": contact,
+            "document_structure": structure,
+            "quantified_impact": impact,
+            "seniority_match": seniority
         },
         "ats_specific_scores": {
             "workday_score": _estimate_workday_score(keyword_match, experience, education),
             "greenhouse_rank": _estimate_greenhouse_rank(keyword_match, placement),
             "taleo_match": _estimate_taleo_match(keyword_match),
-            "icims_score": _estimate_icims_score(education, formatting)
+            "icims_score": _estimate_icims_score(education, structure, contact)
         }
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 9: SENIORITY MATCHING (5 points)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def score_seniority_match(resume_text: str, jd_seniority: str) -> Dict:
+    """
+    Resume seniority level vs JD requirement matching.
+    
+    Research: Title/level mismatch = filtered out
+    - Entry role needs entry language
+    - Senior role needs leadership language
+    
+    Returns:
+        score: 0-5 points
+    """
+    resume_lower = resume_text.lower()
+    
+    # Detect resume seniority level
+    senior_indicators = [
+        'senior', 'lead', 'principal', 'staff', 'architect', 'director',
+        'led team', 'managed team', 'mentored', 'architected', 'owned'
+    ]
+    
+    mid_indicators = [
+        'developed', 'implemented', 'built', 'designed', 'created',
+        'collaborated', 'worked with', 'contributed'
+    ]
+    
+    entry_indicators = [
+        'assisted', 'supported', 'helped', 'learned', 'intern',
+        'entry', 'junior', 'associate'
+    ]
+    
+    # Count indicators
+    senior_count = sum(1 for indicator in senior_indicators if indicator in resume_lower)
+    mid_count = sum(1 for indicator in mid_indicators if indicator in resume_lower)
+    entry_count = sum(1 for indicator in entry_indicators if indicator in resume_lower)
+    
+    # Determine resume level
+    if senior_count >= 3:
+        resume_level = "senior"
+    elif entry_count >= 2:
+        resume_level = "entry"
+    else:
+        resume_level = "mid"
+    
+    # Match against JD
+    jd_level = jd_seniority.lower() if jd_seniority else "mid"
+    
+    if resume_level == jd_level:
+        score = 5
+        behavior = f"Level match: Resume {resume_level} = JD {jd_level}. Appropriate experience level."
+    elif (resume_level == "senior" and jd_level == "mid") or \
+         (resume_level == "mid" and jd_level == "entry"):
+        score = 4
+        behavior = f"Over-qualified: Resume {resume_level} > JD {jd_level}. May be filtered as overqualified."
+    elif (resume_level == "mid" and jd_level == "senior") or \
+         (resume_level == "entry" and jd_level == "mid"):
+        score = 2
+        behavior = f"Under-qualified: Resume {resume_level} < JD {jd_level}. Language mismatch detected."
+    else:
+        score = 1
+        behavior = f"Significant mismatch: Resume {resume_level} vs JD {jd_level}. Likely filtered."
+    
+    return {
+        "score": score,
+        "resume_level": resume_level,
+        "jd_level": jd_level,
+        "match": resume_level == jd_level,
+        "ats_behavior": behavior
     }
 
 
@@ -538,13 +840,14 @@ def _estimate_taleo_match(keyword_match: Dict) -> str:
         return f"{rate}% match - Poor fit"
 
 
-def _estimate_icims_score(education: Dict, formatting: Dict) -> str:
+def _estimate_icims_score(education: Dict, structure: Dict, contact: Dict) -> str:
     """Estimate iCIMS parsability score."""
-    combined = education["score"] + formatting["score"]
+    combined = education["score"] + structure["score"] + contact["score"]
+    max_score = 10 + 5 + 5  # 20 total
     
     if combined >= 18:
-        return f"{combined}/20 - Excellent parsability"
+        return f"{combined}/{max_score} - Excellent parsability"
     elif combined >= 12:
-        return f"{combined}/20 - Good parsability"
+        return f"{combined}/{max_score} - Good parsability"
     else:
-        return f"{combined}/20 - Poor parsability (data loss likely)"
+        return f"{combined}/{max_score} - Poor parsability (data loss likely)"

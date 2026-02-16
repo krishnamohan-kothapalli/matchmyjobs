@@ -325,11 +325,12 @@ def _generate_fallback_suggestions(extraction: dict, weak_areas: list, score: fl
     if "keyword placement" in str(weak_areas).lower():
         if matched_skills:
             top_skills = matched_skills[:3]
+            skills_text = ', '.join(top_skills)
             suggestions.append({
                 "area": "Professional Summary",
                 "priority": "high",
                 "issue": "Key skills are only in your Skills section, not in your summary or experience",
-                "fix": f"Add this to your Professional Summary: 'Experienced professional with expertise in {', '.join(top_skills)}, delivering impactful solutions in [your domain].'",
+                "fix": f"Add this to your Professional Summary: 'Experienced professional with expertise in {skills_text}, delivering impactful solutions in [your domain].'",
                 "impact": "ATS systems weight keywords in your Summary 2-3x higher than in a Skills list. This single change could boost your score by 5-10 points."
             })
     

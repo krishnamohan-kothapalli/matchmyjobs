@@ -116,7 +116,7 @@ body {
 .hero {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 6rem 2rem 4rem;
+  padding: 6rem 2rem 6rem;
   display: grid;
   grid-template-columns: 1.2fr 1fr;
   gap: 4rem;
@@ -497,7 +497,7 @@ body {
 .section-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 5rem 2rem;
+  padding: 5rem 2rem 7rem;
 }
 
 .section-header {
@@ -718,7 +718,7 @@ body {
 .footer {
   background: var(--primary);
   color: white;
-  padding: 3rem 2rem 2rem;
+  padding: 3rem 2rem 3rem;
 }
 
 .footer-content {
@@ -1250,7 +1250,7 @@ body {
 @media (max-width: 768px) {
   .hero {
     grid-template-columns: 1fr;
-    padding: 4rem 1.5rem 3rem;
+    padding: 4rem 1.5rem 5rem;
   }
   
   .hero-title {

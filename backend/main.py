@@ -17,12 +17,21 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="MatchMetric API", version="3.0")
 
+# CORS configuration
+ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else [
+        "https://matchmyjobs-ui.onrender.com",
+        "https://matchmyjobs.com", 
+        "https://www.matchmyjobs.com",
+        "http://localhost:8080"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=True,  # Add this
 )
 
 # ENHANCED: Configuration constants
@@ -37,7 +46,7 @@ MIN_JD_LENGTH = 50
 
 @app.options("/score")
 async def options_score():
-    return {}
+    return {"ok": True}
 
 @app.get("/")
 async def health():

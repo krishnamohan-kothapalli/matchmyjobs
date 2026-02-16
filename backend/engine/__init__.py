@@ -8,10 +8,10 @@ from . import density
 
 def _load_nlp():
     try:
-        return spacy.load("en_core_web_md")
+        return spacy.load("en_core_web_sm")
     except OSError:
-        os.system("python -m spacy download en_core_web_md")
-        return spacy.load("en_core_web_md")
+        os.system("python -m spacy download en_core_web_sm")
+        return spacy.load("en_core_web_sm")
 
 
 nlp = _load_nlp()

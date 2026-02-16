@@ -27,12 +27,18 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font);
   color: var(--text);
   background: var(--bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding-bottom: 4rem;
 }
 
 /* Navigation */

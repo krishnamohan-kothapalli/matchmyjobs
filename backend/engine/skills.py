@@ -18,10 +18,40 @@ _SOFT_SKILLS = {
 }
 
 _NOISE = {
+    # Generic work terms
     "experience", "years", "team", "project", "ability", "skills",
     "job", "candidate", "work", "role", "position", "company",
     "please", "required", "preferred", "must", "will", "using",
     "description", "responsibilities", "duties", "following",
+    
+    # Common filler words
+    "strong", "excellent", "good", "knowledge", "understanding",
+    "working", "proven", "demonstrated", "successful", "effective",
+    
+    # Time and quantity terms
+    "time", "year", "month", "day", "week", "number", "level",
+    "multiple", "various", "several", "many", "other", "additional",
+    
+    # Business generic terms
+    "business", "client", "customer", "stakeholder", "partner",
+    "vendor", "product", "service", "solution", "platform",
+    "process", "system", "tool", "application", "environment",
+    
+    # Action/descriptor words
+    "develop", "implement", "manage", "create", "build",
+    "design", "support", "maintain", "ensure", "provide",
+    
+    # Organizational terms
+    "department", "organization", "division", "unit", "group",
+    "sector", "industry", "field", "area", "domain",
+    
+    # Common adjectives
+    "new", "current", "existing", "future", "potential", "possible",
+    "available", "necessary", "important", "critical", "key",
+    
+    # Vague skill descriptors
+    "technical", "professional", "operational", "strategic",
+    "tactical", "functional", "cross-functional", "cross functional",
 }
 
 
@@ -35,18 +65,73 @@ def extract_soft_skills(text: str) -> set:
 
 
 def spacy_extract_skills(doc: Doc) -> set:
+    """
+    Extract skills using spaCy NLP with improved filtering.
+    
+    ENHANCED v3.1: 
+    - Better noise filtering
+    - Minimum word length requirements  
+    - Exclude pure adjectives/verbs
+    - Require at least one noun or proper noun in phrase
+    """
     text_low = doc.text.lower()
     found = set()
+    
+    # Extract from noun chunks (phrases)
     for chunk in doc.noun_chunks:
         term = chunk.text.lower().strip()
-        if 1 < len(term.split()) <= 4 and term not in _NOISE:
-            if any(c.isalpha() for c in term):
-                found.add(term)
+        
+        # Skip if too short or too long
+        words = term.split()
+        if not (2 <= len(words) <= 4):
+            continue
+            
+        # Skip if in noise list or contains noise words
+        if term in _NOISE or any(word in _NOISE for word in words):
+            continue
+        
+        # Must have alphabetic characters
+        if not any(c.isalpha() for c in term):
+            continue
+            
+        # Must have at least one significant word (not all adjectives)
+        has_noun = any(token.pos_ in ("NOUN", "PROPN") for token in chunk)
+        if not has_noun:
+            continue
+            
+        # Add if it looks like a real skill
+        found.add(term)
+    
+    # Known technical terms that might be missed
+    _TECH_TERMS = {
+        "python", "java", "javascript", "typescript", "sql", "nosql",
+        "aws", "azure", "gcp", "docker", "kubernetes", "jenkins",
+        "react", "angular", "vue", "node", "express", "django",
+        "flask", "spring", "hibernate", "tensorflow", "pytorch",
+        "git", "jira", "agile", "scrum", "devops", "ci/cd",
+        "html", "css", "sass", "rest", "graphql", "api",
+        "mongodb", "postgresql", "mysql", "redis", "elasticsearch",
+    }
+    
+    # Extract standalone proper nouns and specific nouns
     for token in doc:
         if token.pos_ in ("PROPN", "NOUN") and len(token.text) > 2:
             term = token.text.lower()
-            if term not in _NOISE and term.isalpha():
+            
+            # Skip noise
+            if term in _NOISE:
+                continue
+                
+            # Must be alphanumeric
+            if not any(c.isalnum() for c in term):
+                continue
+            
+            # Add if it's a known tech term or looks like one
+            if (term in _TECH_TERMS or
+                token.text[0].isupper() or 
+                any(c.isdigit() for c in term)):
                 found.add(term)
+    
     return found
 
 

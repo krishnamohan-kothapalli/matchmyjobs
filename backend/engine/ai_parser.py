@@ -256,9 +256,9 @@ def generate_suggestions(
     """
     Generate specific copy-paste resume fixes based on extraction findings.
     
-    ENHANCED: Uses smart truncation for long resumes.
+    ENHANCED: Uses smart truncation for long resumes + fallback suggestions.
     
-    Returns list of suggestion dicts. Empty list on failure.
+    Returns list of suggestion dicts. Falls back to rule-based if AI fails.
     """
     try:
         client = _get_client()
@@ -291,9 +291,76 @@ def generate_suggestions(
         parsed      = json.loads(raw)
         suggestions = parsed.get("suggestions", [])
         
+        if not suggestions:
+            logger.warning("AI returned no suggestions, using fallback")
+            return _generate_fallback_suggestions(extraction, weak_areas, score)
+        
         logger.info("Generated %d suggestions (model=%s)", len(suggestions), _MODEL)
         return suggestions
 
     except Exception as e:
         logger.warning("AI suggestions failed (model=%s): %s", _MODEL, e)
-        return []
+        return _generate_fallback_suggestions(extraction, weak_areas, score)
+
+
+def _generate_fallback_suggestions(extraction: dict, weak_areas: list, score: float) -> list:
+    """Generate rule-based suggestions when AI fails."""
+    suggestions = []
+    
+    missing_skills = extraction.get("missing_skills", [])
+    matched_skills = extraction.get("matched_skills", [])
+    
+    # Suggestion 1: Missing skills (highest priority)
+    if missing_skills:
+        top_missing = missing_skills[:5]
+        suggestions.append({
+            "area": "Skills Section",
+            "priority": "high",
+            "issue": f"Resume is missing {len(missing_skills)} required skills from the job description",
+            "fix": f"Add these skills to your Skills section: {', '.join(top_missing)}. Then weave them into your experience bullets with specific examples.",
+            "impact": f"Each missing skill reduces your ATS score. Adding these could increase your score by 5-15 points."
+        })
+    
+    # Suggestion 2: Keyword placement
+    if "keyword placement" in str(weak_areas).lower():
+        if matched_skills:
+            top_skills = matched_skills[:3]
+            suggestions.append({
+                "area": "Professional Summary",
+                "priority": "high",
+                "issue": "Key skills are only in your Skills section, not in your summary or experience",
+                "fix": f"Add this to your Professional Summary: 'Experienced professional with expertise in {", ".join(top_skills)}, delivering impactful solutions in [your domain].'",
+                "impact": "ATS systems weight keywords in your Summary 2-3x higher than in a Skills list. This single change could boost your score by 5-10 points."
+            })
+    
+    # Suggestion 3: Quantify achievements
+    if "quantified" in str(weak_areas).lower() or "impact" in str(weak_areas).lower():
+        suggestions.append({
+            "area": "Experience Bullets",
+            "priority": "high",
+            "issue": "Experience bullets lack measurable results and metrics",
+            "fix": "Rewrite 3-5 bullets to include numbers. Examples: 'Improved system performance by 40%', 'Managed team of 8 engineers', 'Reduced costs by $250K annually', 'Delivered project 3 weeks ahead of schedule'",
+            "impact": "Resumes with quantified achievements score 15-20% higher in ATS systems. Recruiters spend 2x longer reviewing resumes with metrics."
+        })
+    
+    # Suggestion 4: Section structure
+    if "section" in str(weak_areas).lower() or "heading" in str(weak_areas).lower():
+        suggestions.append({
+            "area": "Document Structure",
+            "priority": "medium",
+            "issue": "Section headings may not be ATS-friendly or are missing standard sections",
+            "fix": "Use these exact headings in this order: 'Professional Summary', 'Professional Experience', 'Education', 'Skills', 'Certifications' (if applicable). Remove creative headings like 'My Journey' or 'About Me'.",
+            "impact": "ATS systems can't parse non-standard headings, causing your content to be missed. Standard headings ensure proper parsing."
+        })
+    
+    # Suggestion 5: Generic improvement
+    suggestions.append({
+        "area": "Overall Resume",
+        "priority": "medium",
+        "issue": "Resume doesn't mirror job description language closely enough",
+        "fix": "Use the exact phrases from the job description. If they say 'project management', use 'project management' (not 'managed projects'). If they say 'cross-functional collaboration', use those exact words.",
+        "impact": "ATS systems do literal keyword matching. Using exact JD terminology can increase your score by 10-15 points."
+    })
+    
+    logger.info("Generated %d fallback suggestions", len(suggestions))
+    return suggestions[:5]  # Return max 5

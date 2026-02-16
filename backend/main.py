@@ -23,12 +23,7 @@ ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else [
-        "https://matchmyjobs-ui.onrender.com",
-        "https://matchmyjobs.com", 
-        "https://www.matchmyjobs.com",
-        "http://localhost:8080"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +38,9 @@ MIN_JD_LENGTH = 50
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str):
+    return {}
 
 @app.options("/score")
 async def options_score():

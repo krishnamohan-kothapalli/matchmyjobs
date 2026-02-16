@@ -22,6 +22,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,  # Add this
 )
 
 # ENHANCED: Configuration constants
@@ -33,6 +34,10 @@ MIN_JD_LENGTH = 50
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@app.options("/score")
+async def options_score():
+    return {}
 
 @app.get("/")
 async def health():

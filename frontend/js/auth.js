@@ -136,7 +136,7 @@ function signInWithGoogle() {
   sessionStorage.setItem('authReturnUrl', window.location.href);
   
   // Redirect to backend OAuth endpoint
-  window.location.href = 'https://matchmyjobs-api.onrender.com/auth/google/login';
+  window.location.href = 'https://matchmyjobs.onrender.com/auth/google/login';
 }
 
 // Handle OAuth callback

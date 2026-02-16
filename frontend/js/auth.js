@@ -129,3 +129,37 @@ document.getElementById('form-signup').addEventListener('submit', async function
     window.location.href = 'index.html';
   }
 });
+
+// Google Sign-In
+function signInWithGoogle() {
+  // Store return URL
+  sessionStorage.setItem('authReturnUrl', window.location.href);
+  
+  // Redirect to backend OAuth endpoint
+  window.location.href = 'https://matchmyjobs-api.onrender.com/auth/google/login';
+}
+
+// Handle OAuth callback
+window.addEventListener('load', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  if (urlParams.has('token')) {
+    // OAuth success - store token
+    const token = urlParams.get('token');
+    const email = urlParams.get('email');
+    const name = urlParams.get('name');
+    
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('userEmail', email);
+    localStorage.setItem('userName', name);
+    localStorage.setItem('usageData', JSON.stringify({
+      analysesUsed: 0,
+      userTier: 'free',
+      maxAnalyses: 2,
+      lastUsed: new Date().toISOString()
+    }));
+    
+    alert('Signed in successfully!');
+    window.location.href = 'index.html';
+  }
+});

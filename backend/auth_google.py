@@ -1,42 +1,68 @@
 import os
-from fastapi import APIRouter, HTTPException
-from authlib.integrations.starlette_client import OAuth
-from starlette.requests import Request
-from starlette.responses import RedirectResponse
+import httpx
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import RedirectResponse
 
 router = APIRouter(prefix="/auth/google", tags=["google-auth"])
 
-# OAuth setup
-oauth = OAuth()
-oauth.register(
-    name='google',
-    client_id=os.getenv('GOOGLE_CLIENT_ID'),
-    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'}
-)
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = "https://matchmyjobs.com/auth/google/callback"
 
 @router.get('/login')
-async def google_login(request: Request):
-    redirect_uri = request.url_for('google_callback')
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+async def google_login():
+    # Redirect to Google OAuth
+    google_auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={GOOGLE_CLIENT_ID}&"
+        f"redirect_uri={GOOGLE_REDIRECT_URI}&"
+        f"response_type=code&"
+        f"scope=openid email profile&"
+        f"access_type=offline"
+    )
+    return RedirectResponse(google_auth_url)
 
 @router.get('/callback')
-async def google_callback(request: Request):
+async def google_callback(code: str):
     try:
-        token = await oauth.google.authorize_access_token(request)
-        user_info = token.get('userinfo')
+        # Exchange code for token
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                'https://oauth2.googleapis.com/token',
+                data={
+                    'code': code,
+                    'client_id': GOOGLE_CLIENT_ID,
+                    'client_secret': GOOGLE_CLIENT_SECRET,
+                    'redirect_uri': GOOGLE_REDIRECT_URI,
+                    'grant_type': 'authorization_code'
+                }
+            )
+            token_data = token_response.json()
+            
+            if 'error' in token_data:
+                raise HTTPException(status_code=400, detail=token_data['error'])
+            
+            # Get user info
+            access_token = token_data['access_token']
+            user_response = await client.get(
+                'https://www.googleapis.com/oauth2/v2/userinfo',
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            user_info = user_response.json()
         
-        if not user_info:
-            raise HTTPException(status_code=400, detail="Failed to get user info")
+        # TODO: Store user in database here
         
-        # TODO: Store user in database
-        # For now, return user info
-        return {
-            "email": user_info.get('email'),
-            "name": user_info.get('name'),
-            "picture": user_info.get('picture'),
-            "google_id": user_info.get('sub')
-        }
+        # For now, redirect back to frontend with user info
+        email = user_info.get('email')
+        name = user_info.get('name')
+        
+        # Create a simple token (in production, use JWT)
+        token = f"google_{user_info.get('id')}"
+        
+        # Redirect to frontend with data
+        return RedirectResponse(
+            f"https://matchmyjobs.com/auth.html?token={token}&email={email}&name={name}"
+        )
+        
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return RedirectResponse(f"https://matchmyjobs.com/auth.html?error={str(e)}")

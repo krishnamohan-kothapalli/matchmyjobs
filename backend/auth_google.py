@@ -7,7 +7,7 @@ router = APIRouter(prefix="/auth/google", tags=["google-auth"])
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = "https://matchmyjobs.com/auth/google/callback"
+GOOGLE_REDIRECT_URI = "https://matchmyjobs.onrender.com/auth/google/callback"
 
 @router.get('/login')
 async def google_login():

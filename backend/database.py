@@ -128,9 +128,9 @@ def init_db():
 def check_db_connection():
     """Test database connection"""
     try:
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
         return True
     except Exception as e:
         print(f"❌ Database connection failed: {e}")

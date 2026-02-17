@@ -1,709 +1,247 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard — MatchMyJobs</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #0f172a;
-      --accent: #10b981;
-      --accent-dim: #059669;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --bg-card: #ffffff;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
-    }
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — MatchMyJobs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/shared.css">
+<style>
+.dash-page{max-width:960px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+.page-head{margin-bottom:2rem}
+.page-head h1{font-family:var(--font-d);font-size:clamp(1.5rem,3vw,2rem);font-weight:800;color:var(--ink);letter-spacing:-.025em;margin-bottom:.3rem}
+.page-head p{font-size:.875rem;color:var(--slate)}
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:1.4rem 1.6rem;box-shadow:var(--sh)}
+.stat-lbl{font-family:var(--font-m);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--mist);margin-bottom:.6rem}
+.stat-val{font-family:var(--font-d);font-size:2.2rem;font-weight:800;color:var(--ink);line-height:1;margin-bottom:.25rem}
+.stat-val.green{color:var(--green)}
+.stat-sub{font-size:.8rem;color:var(--slate)}
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+/* USAGE CARD */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:1.6rem;box-shadow:var(--sh);margin-bottom:1.25rem}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:.5rem}
+.card-head h2{font-size:1rem;font-weight:700;color:var(--ink)}
+.tier-pill{font-family:var(--font-m);font-size:.65rem;font-weight:500;text-transform:uppercase;letter-spacing:.1em;padding:.3rem .9rem;border-radius:999px;background:var(--green-l);color:var(--green-d);border:1px solid rgba(0,200,150,.2)}
+.tier-pill.pro{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
 
-    /* ── Nav ──────────────────────────────────────────────── */
-    nav {
-      background: var(--primary);
-      padding: 1rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
+.usage-nums{display:flex;align-items:baseline;gap:.4rem;margin-bottom:.9rem}
+.u-used{font-family:var(--font-d);font-size:2.8rem;font-weight:800;color:var(--ink);line-height:1}
+.u-sep{font-size:1.6rem;color:var(--border)}
+.u-limit{font-family:var(--font-d);font-size:1.75rem;font-weight:700;color:var(--mist);line-height:1}
+.u-lbl{font-size:.85rem;color:var(--slate);margin-left:.4rem;align-self:flex-end;padding-bottom:.25rem}
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      text-decoration: none;
-    }
-    .logo-match { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: #fff; letter-spacing: -0.5px; }
-    .logo-myjobs { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--accent); letter-spacing: -0.5px; }
+.prog-track{height:10px;background:var(--border);border-radius:999px;overflow:hidden;margin-bottom:.75rem}
+.prog-fill{height:100%;border-radius:999px;background:var(--green);transition:width 1s cubic-bezier(.4,0,.2,1)}
+.prog-fill.warn{background:var(--amber)}
+.prog-fill.full{background:var(--red)}
 
-    .nav-right { display: flex; align-items: center; gap: 1rem; }
-    .nav-user { color: #94a3b8; font-size: 0.85rem; }
-    .btn-signout {
-      background: rgba(255,255,255,0.08);
-      color: #94a3b8;
-      border: 1px solid rgba(255,255,255,0.1);
-      padding: 0.4rem 1rem;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-signout:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.usage-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.usage-hint{font-size:.82rem;color:var(--slate)}
 
-    /* ── Layout ───────────────────────────────────────────── */
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 2.5rem 1.5rem;
-    }
+/* UPGRADE BANNER */
+.upgrade-band{background:linear-gradient(135deg,var(--ink),var(--ink2));border-radius:var(--rl);padding:1.5rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1.25rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.upgrade-band h3{font-family:var(--font-d);font-size:1.05rem;font-weight:800;color:#fff;margin-bottom:.25rem}
+.upgrade-band p{font-size:.82rem;color:rgba(255,255,255,.45)}
+.btn-upgrade{background:var(--green);color:#fff;border:none;border-radius:var(--r);padding:.6rem 1.5rem;font-family:var(--font-b);font-size:.875rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-upgrade:hover{background:var(--green-d)}
 
-    .page-header {
-      margin-bottom: 2rem;
-    }
-    .page-header h1 {
-      font-family: 'Syne', sans-serif;
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: var(--primary);
-      margin-bottom: 0.25rem;
-    }
-    .page-header p { color: var(--text-muted); font-size: 0.9rem; }
+/* HISTORY TABLE */
+.hist-table{width:100%;border-collapse:collapse}
+.hist-table th{text-align:left;font-family:var(--font-m);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--mist);padding:.5rem .75rem 1rem;border-bottom:1px solid var(--border)}
+.hist-table td{padding:.9rem .75rem;font-size:.875rem;border-bottom:1px solid var(--bg);color:var(--ink)}
+.hist-table tr:last-child td{border-bottom:none}
+.cur-row td{background:rgba(0,200,150,.04)}
+.cur-badge{font-family:var(--font-m);font-size:.6rem;background:var(--green);color:#fff;padding:.15rem .5rem;border-radius:999px;margin-left:.5rem;vertical-align:middle;text-transform:uppercase;letter-spacing:.06em}
+.mini-bar{display:flex;align-items:center;gap:.5rem}
+.mini-track{height:6px;border-radius:999px;background:var(--border);overflow:hidden;width:80px;flex-shrink:0}
+.mini-fill{height:100%;border-radius:999px;background:var(--green)}
+.empty-hist{text-align:center;padding:2.5rem;color:var(--slate);font-size:.875rem}
 
-    /* ── Stats Row ────────────────────────────────────────── */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
+/* ACCOUNT */
+.acct-row{display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:1px solid var(--bg);font-size:.875rem}
+.acct-row:last-child{border-bottom:none}
+.acct-lbl{color:var(--slate);font-weight:500}
+.acct-val{font-weight:600;color:var(--ink);font-family:var(--font-m);font-size:.82rem}
 
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem 1.5rem;
-      box-shadow: var(--shadow);
-    }
+/* LOADER */
+.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.2s ease infinite;border-radius:6px}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 
-    .stat-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
-    }
-
-    .stat-value {
-      font-family: 'Syne', sans-serif;
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--primary);
-      line-height: 1;
-      margin-bottom: 0.25rem;
-    }
-
-    .stat-value.accent { color: var(--accent); }
-    .stat-sub { font-size: 0.8rem; color: var(--text-muted); }
-
-    /* ── Usage Card ───────────────────────────────────────── */
-    .usage-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      box-shadow: var(--shadow);
-      margin-bottom: 1.5rem;
-    }
-
-    .usage-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.25rem;
-    }
-
-    .usage-card-header h2 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
-    .tier-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      background: #ecfdf5;
-      color: var(--accent-dim);
-      border: 1px solid #a7f3d0;
-    }
-
-    .tier-badge.pro {
-      background: #eff6ff;
-      color: #2563eb;
-      border-color: #bfdbfe;
-    }
-
-    .usage-numbers {
-      display: flex;
-      align-items: baseline;
-      gap: 0.4rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .usage-used {
-      font-family: 'Syne', sans-serif;
-      font-size: 2.5rem;
-      font-weight: 800;
-      color: var(--primary);
-      line-height: 1;
-    }
-
-    .usage-sep { font-size: 1.5rem; color: var(--border); }
-
-    .usage-limit {
-      font-family: 'Syne', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      line-height: 1;
-    }
-
-    .usage-label { color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem; }
-
-    .progress-bar {
-      height: 8px;
-      background: var(--border);
-      border-radius: 999px;
-      overflow: hidden;
-      margin-bottom: 0.75rem;
-    }
-
-    .progress-fill {
-      height: 100%;
-      border-radius: 999px;
-      background: var(--accent);
-      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .progress-fill.warning { background: #f59e0b; }
-    .progress-fill.danger { background: #ef4444; }
-
-    .usage-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .usage-hint { font-size: 0.8rem; color: var(--text-muted); }
-
-    .btn-analyze {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      transition: all 0.15s;
-    }
-    .btn-analyze:hover { background: var(--accent-dim); transform: translateY(-1px); }
-    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-    /* ── History ──────────────────────────────────────────── */
-    .history-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      box-shadow: var(--shadow);
-      margin-bottom: 1.5rem;
-    }
-
-    .history-card h2 {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 1.25rem;
-      color: var(--primary);
-    }
-
-    .history-table { width: 100%; border-collapse: collapse; }
-
-    .history-table th {
-      text-align: left;
-      font-size: 0.72rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      padding: 0 0.75rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .history-table td {
-      padding: 0.85rem 0.75rem;
-      font-size: 0.875rem;
-      border-bottom: 1px solid #f1f5f9;
-      color: var(--text);
-    }
-
-    .history-table tr:last-child td { border-bottom: none; }
-
-    .month-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .month-bar-fill {
-      height: 6px;
-      background: var(--accent);
-      border-radius: 999px;
-      opacity: 0.7;
-      min-width: 4px;
-    }
-
-    .current-month-row td { background: #f0fdf4; }
-    .current-month-row td:first-child { border-radius: 8px 0 0 8px; }
-    .current-month-row td:last-child { border-radius: 0 8px 8px 0; }
-
-    .badge-current {
-      font-size: 0.65rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      background: var(--accent);
-      color: white;
-      padding: 0.1rem 0.5rem;
-      border-radius: 999px;
-      margin-left: 0.5rem;
-    }
-
-    /* ── Account ──────────────────────────────────────────── */
-    .account-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      box-shadow: var(--shadow);
-    }
-
-    .account-card h2 {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 1.25rem;
-      color: var(--primary);
-    }
-
-    .account-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 0.875rem;
-    }
-
-    .account-row:last-child { border-bottom: none; }
-    .account-row-label { color: var(--text-muted); font-weight: 500; }
-    .account-row-value { font-weight: 600; color: var(--primary); }
-
-    /* ── Empty / Loading ──────────────────────────────────── */
-    .loading-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 3rem;
-      gap: 1rem;
-      color: var(--text-muted);
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty-history {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-muted);
-      font-size: 0.875rem;
-    }
-
-    /* ── Upgrade Banner ───────────────────────────────────── */
-    .upgrade-banner {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-      gap: 1rem;
-    }
-
-    .upgrade-text h3 {
-      font-family: 'Syne', sans-serif;
-      font-size: 1rem;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 0.25rem;
-    }
-
-    .upgrade-text p { font-size: 0.8rem; color: #94a3b8; }
-
-    .btn-upgrade {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.5rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
-    }
-    .btn-upgrade:hover { background: var(--accent-dim); }
-
-    /* ── Responsive ───────────────────────────────────────── */
-    @media (max-width: 640px) {
-      .stats-row { grid-template-columns: 1fr 1fr; }
-      .stats-row .stat-card:last-child { grid-column: span 2; }
-      .upgrade-banner { flex-direction: column; align-items: flex-start; }
-    }
-
-    /* ── Fade in ──────────────────────────────────────────── */
-    .fade-in { animation: fadeIn 0.4s ease both; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  </style>
+@media(max-width:700px){
+  .stat-row{grid-template-columns:1fr 1fr}
+  .stat-row .stat-card:last-child{grid-column:span 2}
+  .upgrade-band{flex-direction:column;align-items:flex-start}
+  .usage-foot{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:480px){
+  .stat-row{grid-template-columns:1fr}
+  .stat-row .stat-card:last-child{grid-column:auto}
+}
+</style>
 </head>
 <body>
+<nav class="nav">
+  <div class="nav-in">
+    <a href="index.html" class="logo"><span class="logo-a">Match</span><span class="logo-b">MyJobs</span></a>
+    <div class="nav-r" id="nav-r"></div>
+  </div>
+</nav>
 
-  <!-- Nav -->
-  <nav>
-    <a href="index.html" class="logo">
-      <span class="logo-match">MATCH</span><span class="logo-myjobs">MYJOBS</span>
-    </a>
-    <div class="nav-right">
-      <span class="nav-user" id="nav-email">Loading...</span>
-      <button class="btn-signout" onclick="signOut()">Sign Out</button>
-    </div>
-  </nav>
-
-  <div class="container" id="main-container">
-    <!-- Loading -->
-    <div class="loading-state" id="loading-state">
-      <div class="spinner"></div>
-      <span>Loading your dashboard...</span>
-    </div>
-
-    <!-- Dashboard content (hidden until loaded) -->
-    <div id="dashboard-content" style="display:none">
-
-      <!-- Header -->
-      <div class="page-header fade-in">
-        <h1 id="greeting">Welcome back!</h1>
-        <p id="subheading">Here's your usage summary for <span id="current-month"></span></p>
-      </div>
-
-      <!-- Upgrade Banner (shown only at limit) -->
-      <div class="upgrade-banner fade-in" id="upgrade-banner" style="display:none">
-        <div class="upgrade-text">
-          <h3>You've used all your free analyses 🎯</h3>
-          <p>Upgrade to Analysis Pro for 50 analyses/month and priority processing.</p>
-        </div>
-        <button class="btn-upgrade" onclick="alert('Payment coming soon!')">Upgrade — $9/mo</button>
-      </div>
-
-      <!-- Stats Row -->
-      <div class="stats-row fade-in">
-        <div class="stat-card">
-          <div class="stat-label">Total Analyses</div>
-          <div class="stat-value accent" id="stat-total">0</div>
-          <div class="stat-sub">all time</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">This Month</div>
-          <div class="stat-value" id="stat-month">0</div>
-          <div class="stat-sub" id="stat-month-sub">of 2 used</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Member Since</div>
-          <div class="stat-value" style="font-size:1.2rem; padding-top:0.4rem" id="stat-since">—</div>
-          <div class="stat-sub" id="stat-tier">Free Plan</div>
-        </div>
-      </div>
-
-      <!-- Usage Card -->
-      <div class="usage-card fade-in">
-        <div class="usage-card-header">
-          <h2>Monthly Usage</h2>
-          <span class="tier-badge" id="tier-badge">Free</span>
-        </div>
-        <div class="usage-numbers">
-          <span class="usage-used" id="usage-used">0</span>
-          <span class="usage-sep">/</span>
-          <span class="usage-limit" id="usage-limit">2</span>
-          <span class="usage-label">analyses this month</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
-        </div>
-        <div class="usage-footer">
-          <span class="usage-hint" id="usage-hint">Loading...</span>
-          <a href="index.html" class="btn-analyze" id="btn-analyze">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-              <path d="M10 4v12m-6-6h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-            New Analysis
-          </a>
-        </div>
-      </div>
-
-      <!-- History Table -->
-      <div class="history-card fade-in">
-        <h2>Usage History</h2>
-        <div id="history-content">
-          <div class="empty-history">No history yet.</div>
-        </div>
-      </div>
-
-      <!-- Account Details -->
-      <div class="account-card fade-in">
-        <h2>Account Details</h2>
-        <div class="account-row">
-          <span class="account-row-label">Email</span>
-          <span class="account-row-value" id="account-email">—</span>
-        </div>
-        <div class="account-row">
-          <span class="account-row-label">Full Name</span>
-          <span class="account-row-value" id="account-name">—</span>
-        </div>
-        <div class="account-row">
-          <span class="account-row-label">Plan</span>
-          <span class="account-row-value" id="account-plan">Free (2 analyses/month)</span>
-        </div>
-        <div class="account-row">
-          <span class="account-row-label">Member Since</span>
-          <span class="account-row-value" id="account-since">—</span>
-        </div>
-      </div>
-
-    </div><!-- /dashboard-content -->
+<div class="dash-page">
+  <div class="page-head reveal">
+    <h1 id="greeting">Dashboard</h1>
+    <p id="head-sub">Loading your usage data…</p>
   </div>
 
-  <script>
-    const API = 'https://matchmyjobs.onrender.com';
+  <!-- Upgrade banner (shown at limit) -->
+  <div class="upgrade-band reveal" id="upgrade-band" style="display:none">
+    <div>
+      <h3>You've reached your monthly limit</h3>
+      <p>Upgrade to Analysis Pro for 50 analyses every month.</p>
+    </div>
+    <button class="btn-upgrade" onclick="alert('Payment coming soon! Your account will be notified.')">Upgrade — $20 one-time</button>
+  </div>
 
-    // ── Auth Guard ───────────────────────────────────────────
-    const email = localStorage.getItem('userEmail');
-    if (!email) {
-      window.location.href = 'auth.html';
-    }
+  <!-- Stat cards -->
+  <div class="stat-row reveal d1" id="stat-row">
+    <div class="stat-card"><div class="stat-lbl">Total Analyses</div><div class="stat-val green" id="s-total">—</div><div class="stat-sub">all time</div></div>
+    <div class="stat-card"><div class="stat-lbl">This Month</div><div class="stat-val" id="s-month">—</div><div class="stat-sub" id="s-month-sub">of — used</div></div>
+    <div class="stat-card"><div class="stat-lbl">Member Since</div><div class="stat-val" style="font-size:1.2rem;padding-top:.4rem" id="s-since">—</div><div class="stat-sub" id="s-plan">Free Plan</div></div>
+  </div>
 
-    document.getElementById('nav-email').textContent = email;
+  <!-- Usage card -->
+  <div class="card reveal d2" id="usage-card">
+    <div class="card-head">
+      <h2>Monthly Usage</h2>
+      <span class="tier-pill" id="tier-pill">Free</span>
+    </div>
+    <div class="usage-nums">
+      <span class="u-used" id="u-used">—</span>
+      <span class="u-sep">/</span>
+      <span class="u-limit" id="u-limit">—</span>
+      <span class="u-lbl">analyses this month</span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="usage-foot">
+      <span class="usage-hint" id="usage-hint">Loading…</span>
+      <a href="analysis.html" class="btn btn-g" id="analyze-link">
+        <svg width="14" height="14" fill="none" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        New Analysis
+      </a>
+    </div>
+  </div>
 
-    // ── Load Dashboard ───────────────────────────────────────
-    async function loadDashboard() {
-      try {
-        const res = await fetch(`${API}/api/auth/me?email=${encodeURIComponent(email)}`);
-        
-        if (!res.ok) {
-          // If user not in DB, still show localStorage data
-          loadFromLocalStorage();
-          return;
-        }
+  <!-- History -->
+  <div class="card reveal d2">
+    <div class="card-head"><h2>Usage History</h2></div>
+    <div id="hist-wrap"><div class="empty-hist">No history yet. Run your first analysis to get started.</div></div>
+  </div>
 
-        const data = await res.json();
-        renderDashboard(data);
+  <!-- Account details -->
+  <div class="card reveal d3">
+    <div class="card-head"><h2>Account</h2></div>
+    <div class="acct-row"><span class="acct-lbl">Email</span><span class="acct-val" id="a-email">—</span></div>
+    <div class="acct-row"><span class="acct-lbl">Name</span><span class="acct-val" id="a-name">—</span></div>
+    <div class="acct-row"><span class="acct-lbl">Plan</span><span class="acct-val" id="a-plan">Free (2 analyses/month)</span></div>
+    <div class="acct-row"><span class="acct-lbl">Member Since</span><span class="acct-val" id="a-since">—</span></div>
+    <div class="acct-row" style="border-bottom:none;padding-top:1.25rem"><span></span><button onclick="signOut()" style="background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:.5rem 1.1rem;font-family:var(--font-b);font-size:.82rem;color:var(--slate);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--slate)'">Sign Out</button></div>
+  </div>
+</div>
 
-      } catch (err) {
-        console.warn('API unavailable, using localStorage:', err);
-        loadFromLocalStorage();
-      }
-    }
+<script>
+const API = window.location.hostname==='localhost'?'http://127.0.0.1:8000':'https://matchmyjobs.onrender.com';
+const email = localStorage.getItem('userEmail');
+if(!localStorage.getItem('authToken')){ window.location.href='auth.html'; }
 
-    function loadFromLocalStorage() {
-      const usage = JSON.parse(localStorage.getItem('usageData') || '{}');
-      const name = localStorage.getItem('userName') || email.split('@')[0];
-      renderDashboard({
-        email: email,
-        name: name,
-        tier: usage.userTier || 'free',
-        member_since: 'Recently',
-        current_month: {
-          analyses_used: usage.analysesUsed || 0,
-          analyses_limit: usage.userTier === 'analysis_pro' ? 50 : 2,
-          remaining: Math.max(0, (usage.userTier === 'analysis_pro' ? 50 : 2) - (usage.analysesUsed || 0)),
-          can_analyze: (usage.analysesUsed || 0) < (usage.userTier === 'analysis_pro' ? 50 : 2),
-          month: new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
-        },
-        usage_history: [],
-        stats: { total_analyses: usage.analysesUsed || 0, months_active: 1 }
-      });
-    }
+// Nav
+document.getElementById('nav-r').innerHTML=`<a href="analysis.html" class="btn-ngg"><svg width="13" height="13" fill="none" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>New Analysis</a>`;
+function signOut(){ localStorage.clear(); window.location.href='auth.html'; }
 
-    function renderDashboard(data) {
-      // Hide loading, show content
-      document.getElementById('loading-state').style.display = 'none';
-      document.getElementById('dashboard-content').style.display = 'block';
+async function loadDashboard(){
+  try{
+    const res = await fetch(`${API}/api/auth/me?email=${encodeURIComponent(email)}`);
+    if(res.ok){ render(await res.json()); }
+    else { renderFromLocal(); }
+  }catch{ renderFromLocal(); }
+}
 
-      const cm = data.current_month;
-      const pct = Math.round((cm.analyses_used / cm.analyses_limit) * 100);
+function renderFromLocal(){
+  const u=JSON.parse(localStorage.getItem('usageData')||'{}');
+  const name=localStorage.getItem('userName')||email?.split('@')[0]||'there';
+  render({
+    email,name,tier:u.userTier||'free',member_since:'Recently',
+    current_month:{analyses_used:u.analysesUsed||0,analyses_limit:u.analysesLimit||2,remaining:Math.max(0,(u.analysesLimit||2)-(u.analysesUsed||0)),can_analyze:(u.analysesUsed||0)<(u.analysesLimit||2),month:new Date().toLocaleString('default',{month:'long',year:'numeric'})},
+    usage_history:[],stats:{total_analyses:u.analysesUsed||0,months_active:1}
+  });
+}
 
-      // Header
-      const firstName = data.name ? data.name.split(' ')[0] : 'there';
-      document.getElementById('greeting').textContent = `Welcome back, ${firstName}!`;
-      document.getElementById('current-month').textContent = cm.month;
-      document.getElementById('nav-email').textContent = data.email;
+function render(d){
+  const cm=d.current_month, pct=Math.min(100,Math.round(cm.analyses_used/cm.analyses_limit*100));
+  const firstName=d.name?.split(' ')[0]||'there';
+  document.getElementById('greeting').textContent=`Welcome back, ${firstName}!`;
+  document.getElementById('head-sub').textContent=`Here's your usage for ${cm.month}`;
 
-      // Stats
-      document.getElementById('stat-total').textContent = data.stats.total_analyses;
-      document.getElementById('stat-month').textContent = cm.analyses_used;
-      document.getElementById('stat-month-sub').textContent = `of ${cm.analyses_limit} used`;
-      document.getElementById('stat-since').textContent = data.member_since || '—';
-      document.getElementById('stat-tier').textContent = formatTier(data.tier);
+  // Stats
+  document.getElementById('s-total').textContent=d.stats?.total_analyses??0;
+  document.getElementById('s-month').textContent=cm.analyses_used;
+  document.getElementById('s-month-sub').textContent=`of ${cm.analyses_limit} used`;
+  document.getElementById('s-since').textContent=d.member_since||'—';
+  document.getElementById('s-plan').textContent=formatPlan(d.tier);
 
-      // Usage card
-      document.getElementById('usage-used').textContent = cm.analyses_used;
-      document.getElementById('usage-limit').textContent = cm.analyses_limit;
+  // Usage card
+  document.getElementById('u-used').textContent=cm.analyses_used;
+  document.getElementById('u-limit').textContent=cm.analyses_limit;
+  const fill=document.getElementById('prog-fill');
+  fill.style.width=pct+'%';
+  fill.className='prog-fill'+(pct>=100?' full':pct>=80?' warn':'');
+  const pill=document.getElementById('tier-pill');
+  pill.textContent=formatTier(d.tier);
+  if(d.tier!=='free') pill.classList.add('pro');
 
-      const fill = document.getElementById('progress-fill');
-      fill.style.width = Math.min(pct, 100) + '%';
-      if (pct >= 100) fill.className = 'progress-fill danger';
-      else if (pct >= 75) fill.className = 'progress-fill warning';
+  if(!cm.can_analyze){
+    document.getElementById('usage-hint').textContent='Limit reached — resets on the 1st of next month.';
+    document.getElementById('analyze-link').style.opacity='.4';
+    document.getElementById('analyze-link').style.pointerEvents='none';
+    document.getElementById('upgrade-band').style.display='flex';
+  } else {
+    document.getElementById('usage-hint').textContent=cm.remaining===1?'1 analysis remaining this month':`${cm.remaining} analyses remaining this month`;
+  }
 
-      const tierBadge = document.getElementById('tier-badge');
-      tierBadge.textContent = formatTier(data.tier);
-      if (data.tier !== 'free') tierBadge.classList.add('pro');
+  // Account
+  document.getElementById('a-email').textContent=d.email;
+  document.getElementById('a-name').textContent=d.name||'—';
+  document.getElementById('a-plan').textContent=formatPlanFull(d.tier);
+  document.getElementById('a-since').textContent=d.member_since||'—';
 
-      // Usage hint
-      if (!cm.can_analyze) {
-        document.getElementById('usage-hint').textContent = `Limit reached. Resets on the 1st of next month.`;
-        const btn = document.getElementById('btn-analyze');
-        btn.style.opacity = '0.4';
-        btn.style.pointerEvents = 'none';
-        document.getElementById('upgrade-banner').style.display = 'flex';
-      } else {
-        document.getElementById('usage-hint').textContent =
-          cm.remaining === 1
-            ? `1 analysis remaining this month`
-            : `${cm.remaining} analyses remaining this month`;
-      }
+  // History
+  const hist=d.usage_history||[];
+  if(hist.length===0){ return; }
+  const thisMonth=new Date().toISOString().slice(0,7);
+  const maxA=Math.max(...hist.map(h=>h.analyses),1);
+  document.getElementById('hist-wrap').innerHTML=`
+    <table class="hist-table">
+      <thead><tr><th>Month</th><th>Analyses</th><th>Optimizations</th></tr></thead>
+      <tbody>${hist.map(h=>`
+        <tr class="${h.month===thisMonth?'cur-row':''}">
+          <td>${fmtMonth(h.month)}${h.month===thisMonth?'<span class="cur-badge">Current</span>':''}</td>
+          <td><div class="mini-bar"><div class="mini-track"><div class="mini-fill" style="width:${Math.round(h.analyses/maxA*100)}%"></div></div><span>${h.analyses}</span></div></td>
+          <td>${h.optimizations||0}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
 
-      // Account details
-      document.getElementById('account-email').textContent = data.email;
-      document.getElementById('account-name').textContent = data.name || '—';
-      document.getElementById('account-plan').textContent = formatPlan(data.tier);
-      document.getElementById('account-since').textContent = data.member_since || '—';
+function formatTier(t){ return{free:'Free',analysis_pro:'Pro',optimize:'Optimize'}[t]||'Free'; }
+function formatPlan(t){ return{free:'Free Plan',analysis_pro:'Analysis Pro',optimize:'Optimize Plan'}[t]||'Free Plan'; }
+function formatPlanFull(t){ return{free:'Free (2 analyses/month)',analysis_pro:'Analysis Pro (50 analyses/month)',optimize:'Optimize (50 analyses + 25 rewrites/month)'}[t]||'Free (2 analyses/month)'; }
+function fmtMonth(s){ const [y,m]=s.split('-'); return new Date(+y,+m-1,1).toLocaleString('default',{month:'long',year:'numeric'}); }
 
-      // History table
-      renderHistory(data.usage_history, cm);
-    }
-
-    function renderHistory(history, currentMonth) {
-      const container = document.getElementById('history-content');
-
-      if (!history || history.length === 0) {
-        container.innerHTML = `<div class="empty-history">No usage history yet. Run your first analysis to get started!</div>`;
-        return;
-      }
-
-      const maxAnalyses = Math.max(...history.map(h => h.analyses), 1);
-      const thisMonth = new Date().toISOString().slice(0, 7); // "2026-02"
-
-      const rows = history.map(h => {
-        const isCurrent = h.month === thisMonth;
-        const barWidth = Math.round((h.analyses / maxAnalyses) * 120);
-        return `
-          <tr class="${isCurrent ? 'current-month-row' : ''}">
-            <td>
-              ${formatMonth(h.month)}
-              ${isCurrent ? '<span class="badge-current">Current</span>' : ''}
-            </td>
-            <td>
-              <div class="month-bar">
-                <div class="month-bar-fill" style="width:${barWidth}px"></div>
-                <span>${h.analyses}</span>
-              </div>
-            </td>
-            <td>${h.optimizations || 0}</td>
-          </tr>
-        `;
-      }).join('');
-
-      container.innerHTML = `
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>Month</th>
-              <th>Analyses</th>
-              <th>Optimizations</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      `;
-    }
-
-    // ── Helpers ──────────────────────────────────────────────
-    function formatTier(tier) {
-      return { free: 'Free', analysis_pro: 'Pro', optimize: 'Optimize' }[tier] || 'Free';
-    }
-
-    function formatPlan(tier) {
-      return {
-        free: 'Free Plan (2 analyses/month)',
-        analysis_pro: 'Analysis Pro (50 analyses/month)',
-        optimize: 'Optimize Plan (50 analyses + 25 optimizations/month)'
-      }[tier] || 'Free Plan';
-    }
-
-    function formatMonth(monthStr) {
-      const [year, month] = monthStr.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return date.toLocaleString('default', { month: 'long', year: 'numeric' });
-    }
-
-    function signOut() {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('usageData');
-      window.location.href = 'auth.html';
-    }
-
-    // Load on start
-    loadDashboard();
-  </script>
+const io=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}}),{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+loadDashboard();
+</script>
 </body>
 </html>

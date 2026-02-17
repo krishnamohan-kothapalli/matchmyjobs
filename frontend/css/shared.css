@@ -1,0 +1,63 @@
+/* MatchMyJobs — Design System */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --ink:#09111f;--ink2:#16243a;--ink3:#1e3349;
+  --slate:#566a80;--mist:#8ea3b8;--border:#dce5ef;
+  --bg:#f3f7fb;--white:#fff;
+  --green:#00c896;--green-d:#00a87e;--green-l:rgba(0,200,150,.1);
+  --amber:#f59e0b;--red:#ef4444;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --r:10px;--rl:16px;--rxl:24px;
+  --sh:0 1px 4px rgba(9,17,31,.08),0 0 0 1px rgba(9,17,31,.04);
+  --shl:0 8px 32px rgba(9,17,31,.12),0 0 0 1px rgba(9,17,31,.04);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-b);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+a{color:inherit}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:300;height:62px;display:flex;align-items:center;padding:0 1.5rem;background:rgba(9,17,31,.97);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.05)}
+.nav-in{width:100%;max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:1.5rem}
+.logo{display:flex;align-items:baseline;text-decoration:none;flex-shrink:0}
+.logo-a{font-family:var(--font-d);font-size:1.2rem;font-weight:800;color:#fff;letter-spacing:-.02em}
+.logo-b{font-family:var(--font-d);font-size:1.2rem;font-weight:800;color:var(--green);letter-spacing:-.02em}
+.nav-links{display:flex;align-items:center;gap:.1rem}
+.nav-links a{color:rgba(255,255,255,.5);text-decoration:none;font-size:.85rem;font-weight:500;padding:.42rem .8rem;border-radius:8px;transition:color .15s,background .15s;white-space:nowrap}
+.nav-links a:hover{color:#fff;background:rgba(255,255,255,.07)}
+.nav-r{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.btn-ng{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.75);font-family:var(--font-b);font-size:.82rem;font-weight:600;padding:.42rem 1rem;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;transition:all .15s}
+.btn-ng:hover{background:rgba(255,255,255,.14);color:#fff}
+.btn-ngg{background:var(--green);border:none;color:#fff;font-family:var(--font-b);font-size:.82rem;font-weight:700;padding:.45rem 1.1rem;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;transition:all .15s}
+.btn-ngg:hover{background:var(--green-d);transform:translateY(-1px)}
+.ham{display:none;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.6);padding:.4rem;border-radius:6px}
+.ham:hover{background:rgba(255,255,255,.08);color:#fff}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--font-b);font-weight:600;border-radius:var(--r);border:none;cursor:pointer;text-decoration:none;transition:all .18s;white-space:nowrap}
+.btn-g{background:var(--green);color:#fff;padding:.7rem 1.5rem;font-size:.9rem}
+.btn-g:hover{background:var(--green-d);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,200,150,.25)}
+.btn-gl{padding:.9rem 2.25rem;font-size:1rem;border-radius:var(--rl)}
+.btn-ol{background:transparent;color:var(--ink);border:1.5px solid var(--border);padding:.7rem 1.5rem;font-size:.9rem;border-radius:var(--r)}
+.btn-ol:hover{border-color:var(--ink3);background:var(--white)}
+.btn-gd{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.1);padding:.7rem 1.5rem;font-size:.9rem;border-radius:var(--rl)}
+.btn-gd:hover{background:rgba(255,255,255,.14);color:#fff}
+.btn-fw{width:100%;justify-content:center}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .55s ease,transform .55s ease}
+.reveal.in{opacity:1;transform:none}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
+
+/* MOBILE NAV */
+@media(max-width:860px){
+  .nav-links{display:none;position:absolute;top:62px;left:0;right:0;background:var(--ink);padding:.75rem 1.25rem 1.25rem;flex-direction:column;gap:.2rem;border-bottom:1px solid rgba(255,255,255,.07);z-index:299}
+  .nav-links.open{display:flex}
+  .nav-links a{font-size:1rem;padding:.75rem 1rem}
+  .ham{display:flex}
+}

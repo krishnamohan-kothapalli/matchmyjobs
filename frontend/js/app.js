@@ -558,12 +558,16 @@ async function runAnalysis() {
     updateLoadingStep('Extracting skills from resume', true);
     updateProgress(70);
     
+    // Get logged-in user's email for database tracking
+    const userEmail = localStorage.getItem('userEmail') || null;
+    
     const res = await fetch(`${CONFIG.API_BASE}/score`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         resume_text: state.resumeText,
         jd_text: state.jdText,
+        email: userEmail,  // Send email so backend tracks in database
       }),
     });
     
@@ -582,8 +586,19 @@ async function runAnalysis() {
     updateLoadingStep('Generating report', true);
     updateProgress(100);
     
-    // Increment usage count
-    incrementUsageCount();
+    // Sync usage count from database (if returned) or increment localStorage
+    if (data.usage) {
+      // Database is tracking - sync to localStorage so UI stays consistent
+      const usageData = JSON.parse(localStorage.getItem('usageData') || '{}');
+      usageData.analysesUsed = data.usage.analyses_used;
+      usageData.analysesLimit = data.usage.analyses_limit;
+      usageData.remaining = data.usage.remaining;
+      usageData.lastUsed = new Date().toISOString();
+      localStorage.setItem('usageData', JSON.stringify(usageData));
+    } else {
+      // Fallback: increment localStorage only
+      incrementUsageCount();
+    }
     
     // Save and redirect
     localStorage.setItem('auditResults', JSON.stringify(data));

@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 class AnalysisRequest(BaseModel):
     resume_text: str
     jd_text: str
+    email: Optional[str] = None  # User email for database usage tracking
 
 
 class DensityResult(BaseModel):

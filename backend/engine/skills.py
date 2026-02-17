@@ -55,12 +55,60 @@ _NOISE = {
 }
 
 
+# Stem mapping: resume word root → canonical soft skill name
+_SOFT_SKILL_STEMS = {
+    "collaborat":    "collaboration",
+    "communicat":    "communication",
+    "leadership":    "leadership",
+    "led ":          "leadership",
+    "lead ":         "leadership",
+    "mentor":        "mentoring",
+    "coach":         "coaching",
+    "teamwork":      "teamwork",
+    "team player":   "teamwork",
+    "problem.solv":  "problem solving",
+    "critical think": "critical thinking",
+    "time manag":    "time management",
+    "adapt":         "adaptability",
+    "creat":         "creativity",
+    "attention to detail": "attention to detail",
+    "analytical":    "analytical thinking",
+    "decision":      "decision making",
+    "conflict":      "conflict resolution",
+    "negotiat":      "negotiation",
+    "present":       "presentation",
+    "stakeholder":   "stakeholder management",
+    "cross.functional": "cross-functional",
+    "client manag":  "client management",
+    "vendor manag":  "vendor management",
+    "project manag": "project management",
+    "change manag":  "change management",
+    "risk manag":    "risk management",
+    "strategic":     "strategic thinking",
+}
+
+
 def extract_soft_skills(text: str) -> set:
+    """
+    BUG 6 FIX: Use stem/root matching so inflected forms are caught.
+    e.g. "collaborated" → "collaboration", "mentored" → "mentoring"
+    Falls back to exact phrase matching for multi-word skills.
+    """
+    import re
     text_low = text.lower()
     found = set()
+
+    # Exact phrase matching (original logic)
     for skill in _SOFT_SKILLS:
         if skill in text_low:
             found.add(skill)
+
+    # Stem matching for common soft skill roots
+    for stem, canonical in _SOFT_SKILL_STEMS.items():
+        pattern = stem.replace('.', r'[\w]*\s?')
+        if re.search(pattern, text_low):
+            found.add(canonical)
+
     return found
 
 

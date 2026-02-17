@@ -185,10 +185,113 @@ def extract_all(jd_text: str, resume_text: str) -> dict:
         return parsed
 
     except Exception as e:
-        logger.warning("AI extraction failed (model=%s), using spaCy fallback: %s", _MODEL, e)
-        # ENHANCED: Log more context for debugging
+        logger.warning("AI extraction failed (model=%s), attempting semantic fallback: %s", _MODEL, e)
         logger.debug("JD length: %d, Resume length: %d", len(jd_text), len(resume_text))
-        return _empty_extraction()
+        # BUG 5 FIX: Instead of returning empty extraction (which gives 0/30 score),
+        # run a deterministic semantic skill matcher as fallback.
+        return _semantic_fallback(jd_text, resume_text)
+
+
+
+def _semantic_fallback(jd_text: str, resume_text: str) -> dict:
+    """
+    BUG 5 FIX: Deterministic semantic skill matcher used when AI extraction fails.
+
+    Instead of returning all zeros, this function:
+    1. Extracts skill tokens from the JD
+    2. Checks the resume for each skill using synonym expansion
+    3. Returns a structured extraction dict that score_keyword_match can use
+
+    This ensures a meaningful score even without API access.
+    """
+    resume_lower = resume_text.lower()
+    jd_lower = jd_text.lower()
+
+    # Skill synonym map for semantic matching
+    SYNONYMS: dict = {
+        "test automation":    ["automated test", "automation framework", "automated testing", "automation suite"],
+        "qa testing":         ["quality assurance", "quality gates", "qa engineer", "sdet", "quality engineering"],
+        "manual testing":     ["manual test", "manual and automated", "test cases", "test plans", "test execution"],
+        "web testing":        ["web-based application", "web application", "frontend testing", "ui testing"],
+        "mobile testing":     ["mobile application", "android testing", "ios testing", "mobile app"],
+        "ci/cd pipelines":    ["ci/cd", "jenkins", "continuous integration", "continuous delivery", "github actions"],
+        "ci/cd":              ["jenkins", "continuous integration", "continuous delivery", "pipelines"],
+        "playwright":         ["playwright"],
+        "selenium":           ["selenium"],
+        "cypress":            ["cypress"],
+        "appium":             ["appium"],
+        "javascript":         ["javascript", " js ", "ecmascript"],
+        "typescript":         ["typescript", " ts "],
+        "node.js":            ["node.js", "nodejs", "node js"],
+        "next.js":            ["next.js", "nextjs"],
+        "react":              ["react", "reactjs"],
+        "python":             ["python"],
+        "java":               ["java"],
+        "sql":                ["sql"],
+        "api testing":        ["rest assured", "api test", "postman", "karate dsl", "api automation"],
+        "rest api":           ["rest assured", "restful", "rest api"],
+        "docker":             ["docker", "containerization"],
+        "kubernetes":         ["kubernetes", "k8s"],
+        "aws":                ["amazon web services", "aws", " ec2 ", " s3 ", "lambda"],
+        "agile":              ["agile", "scrum", "sprint", "kanban"],
+        "git":                ["git", "github", "gitlab", "bitbucket"],
+        "ai testing tools":   ["ai testing", "ai-powered test", "cursor", "copilot test", "llm test"],
+        "cursor":             ["cursor"],
+        "bdd":                ["bdd", "cucumber", "behave", "gherkin", "behavior driven"],
+    }
+
+    def _skill_in_resume(skill: str) -> bool:
+        """Check if skill or any synonym appears in resume."""
+        if skill in resume_lower:
+            return True
+        for syn in SYNONYMS.get(skill, []):
+            if syn in resume_lower:
+                return True
+        return False
+
+    # Extract required skills from JD using simple tokenization
+    import re as _re_local
+    skill_patterns = [
+        r"[-*\u2022]\s*([^,\r\n]{3,60}?)(?:\r?\n|,|$)",
+        r"experience (?:with|in)\s+([^,\r\n]{3,40})",
+        r"knowledge of\s+([^,\r\n]{3,40})",
+        r"familiarity with\s+([^,\r\n]{3,40})",
+        r"expertise in\s+([^,\r\n]{3,40})",
+    ]
+    raw_skills = set()
+    for pat in skill_patterns:
+        for m in _re_local.finditer(pat, jd_lower, _re_local.IGNORECASE):
+            token = m.group(1).strip().strip(".,;:")
+            if 3 <= len(token) <= 50:
+                raw_skills.add(token)
+
+    # Also check if known skills from SYNONYMS appear in JD
+    jd_required = []
+    for skill in SYNONYMS.keys():
+        if skill in jd_lower or any(s in jd_lower for s in SYNONYMS[skill]):
+            jd_required.append(skill)
+
+    if not jd_required:
+        jd_required = list(raw_skills)[:20]
+
+    # Deduplicate
+    jd_required = list(dict.fromkeys(jd_required))
+
+    matched = [s for s in jd_required if _skill_in_resume(s)]
+    missing = [s for s in jd_required if not _skill_in_resume(s)]
+
+    logger.info(
+        "Semantic fallback: %d required skills, %d matched, %d missing",
+        len(jd_required), len(matched), len(missing)
+    )
+
+    base = _empty_extraction()
+    base.update({
+        "jd_required_skills": jd_required,
+        "matched_skills": matched,
+        "missing_skills": missing,
+    })
+    return base
 
 
 def _empty_extraction() -> dict:

@@ -6,11 +6,11 @@ import re
 # ── Regex patterns ─────────────────────────────────────────────────────────
 _EMAIL_RE    = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
 _PHONE_RE    = re.compile(r"\(?\d{3}\)?[\s\.-]?\d{3}[\s\.-]?\d{4}")
-_LOCATION_RE = re.compile(r"[A-Z][a-z]+,\s?[A-Z]{2,}")
-_LINKEDIN_RE = re.compile(r"linkedin\.com/in/[\w\-]+", re.IGNORECASE)
+_LOCATION_RE = re.compile(r"[A-Z][a-zA-Z\s]{2,20},\s?(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b")
+_LINKEDIN_RE = re.compile(r"(?:linkedin\.com/in/|(?<!\w)in/)[\w\-]{3,}", re.IGNORECASE)
 
 _DATE_RE = re.compile(
-    r"(\d{1,2}/\d{2,4}|\b\d{4}\b"
+    r"(\d{1,2}/\d{2,4}|\b(?:19|20)\d{2}\b"  # BUG 3 FIX: require 19xx/20xx to avoid phone digits
     r"|(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4})",
     re.IGNORECASE,
 )
@@ -58,8 +58,30 @@ _EDU_PREFERRED_RE = re.compile(
 def check_contact(resume_text: str) -> dict:
     has_email    = bool(_EMAIL_RE.search(resume_text))
     has_phone    = bool(_PHONE_RE.search(resume_text))
-    has_location = bool(_LOCATION_RE.search(resume_text))
-    has_linkedin = bool(_LINKEDIN_RE.search(resume_text))
+
+    # BUG 1 FIX: original _LOCATION_RE matched tool names like "Postman, JM"
+    # New approach: require a real US state abbreviation, or detect known city names
+    # in the resume header (first 5 lines).
+    _US_STATES = (
+        "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|"
+        "MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC"
+    )
+    import re as _re
+    _state_loc_re = _re.compile(rf'[A-Z][a-zA-Z\s]{{2,20}},\s?({_US_STATES})\b', _re.MULTILINE)
+    _city_re = _re.compile(
+        r'\b(?:New York|Los Angeles|San Francisco|Chicago|Houston|Seattle|Austin|Boston|' +
+        r'Jersey City|New Jersey|Brooklyn|Manhattan|Charlotte|Atlanta|Dallas|Miami|Phoenix|' +
+        r'Denver|Portland|Philadelphia|Minneapolis|Nashville|San Diego|Washington)\b',
+        _re.IGNORECASE
+    )
+    header = '\n'.join(resume_text.split('\n')[:5])
+    has_location = bool(_state_loc_re.search(resume_text)) or bool(_city_re.search(header))
+
+    # BUG 2 FIX: support LinkedIn shorthand "in/username" without full domain
+    has_linkedin = bool(_re.search(
+        r'(?:linkedin\.com/in/|(?<!\w)in/)[\w\-]{3,}',
+        resume_text, _re.IGNORECASE
+    ))
 
     return {
         "location": {

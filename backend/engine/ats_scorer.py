@@ -329,8 +329,37 @@ def score_formatting(resume_text: str) -> Dict:
 def score_contact_info(resume_text: str) -> Dict:
     has_email = bool(re.search(r'[\w\.-]+@[\w\.-]+\.\w+', resume_text))
     has_phone = bool(re.search(r'\(?\d{3}\)?[\s\.\-]?\d{3}[\s\.\-]?\d{4}', resume_text))
-    has_location = bool(re.search(r'[A-Z][a-z]+,\s?[A-Z]{2,}', resume_text))
-    has_linkedin = bool(re.search(r'linkedin\.com/in/[\w\-]+', resume_text, re.IGNORECASE))
+
+    # BUG 1 FIX: old regex matched tool names like "Postman, JM" as city/state.
+    # Now requires a known US state abbreviation (2 uppercase letters) after the comma,
+    # or a city/state pattern on the first 3 lines of the resume (header area).
+    _US_STATES = (
+        "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|"
+        "MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC"
+    )
+    _LOC_RE = re.compile(
+        rf'[A-Z][a-zA-Z\s]{{2,20}},\s?({_US_STATES})\b',
+        re.MULTILINE
+    )
+    # Also check header lines for city names without state (common in modern resumes)
+    header_lines = '\n'.join(resume_text.split('\n')[:5])
+    _CITY_ONLY_RE = re.compile(
+        r'\b(?:New York|Los Angeles|San Francisco|Chicago|Houston|Seattle|Austin|Boston|'
+        r'Jersey City|New Jersey|Brooklyn|Queens|Manhattan|Atlanta|Denver|Portland|'
+        r'Charlotte|Dallas|Miami|Phoenix|Philadelphia|San Diego|Minneapolis|Nashville)\b',
+        re.IGNORECASE
+    )
+    has_location = (
+        bool(_LOC_RE.search(resume_text)) or
+        bool(_CITY_ONLY_RE.search(header_lines))
+    )
+
+    # BUG 2 FIX: many resumes omit "linkedin.com" and use shorthand "in/username"
+    # or "linkedin.com/in/username" — match both forms.
+    has_linkedin = bool(re.search(
+        r'(?:linkedin\.com/in/|(?<!\w)in/)[\w\-]{3,}',
+        resume_text, re.IGNORECASE
+    ))
     score = 0
     issues = []
     if has_email: score += 2

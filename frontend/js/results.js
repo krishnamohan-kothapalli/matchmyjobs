@@ -192,25 +192,48 @@ function renderSuggestions(suggestions, score) {
     if (!suggestions || !suggestions.length) return;
     const body = document.getElementById('suggestions-body');
     if (!body) return;
-    body.innerHTML = suggestions.map(s => {
+    body.innerHTML = suggestions.map((s, i) => {
       const p = s.priority || 'medium';
-      const systems = (s.ats_systems || []).map(sys => `<span class="system-badge">${sys}</span>`).join('');
+      const hasOriginal = s.original && s.original !== 'N/A - new addition' && s.original !== 'N/A';
       return `<div class="suggestion-card priority-${p}">
         <div class="suggestion-header">
           <span class="suggestion-priority">${p.toUpperCase()}</span>
-          <div><div class="suggestion-area">${s.area || ''}</div>
-          <div class="suggestion-systems">${systems}</div></div>
+          <div class="suggestion-area">${sanitizeHTML(s.area || '')}</div>
         </div>
-        <p class="suggestion-issue">${s.issue || ''}</p>
-        ${s.fix ? `<pre class="suggestion-fix">${s.fix}</pre>` : ''}
-        ${s.why_it_matters ? `<p class="suggestion-issue">${s.why_it_matters}</p>` : ''}
-        ${s.score_impact ? `<p class="suggestion-impact">📈 ${s.score_impact}</p>` : ''}
+        <p class="suggestion-issue">⚠️ ${sanitizeHTML(s.issue || '')}</p>
+        ${hasOriginal ? `
+        <div class="suggestion-original">
+          <div class="suggestion-label">📄 Current text:</div>
+          <div class="original-text">${sanitizeHTML(s.original)}</div>
+        </div>` : ''}
+        <div class="suggestion-fix-block">
+          <div class="suggestion-label">✏️ Replace with:</div>
+          <div class="fix-text">${sanitizeHTML(s.fix || '')}</div>
+          <button class="copy-fix-btn" onclick="copyFix(this)">📋 Copy</button>
+        </div>
+        ${s.score_impact ? `<div class="suggestion-impact">📈 ${sanitizeHTML(s.score_impact)}</div>` : ''}
       </div>`;
     }).join('');
   }
   // Enable the suggestions button
   const btn = document.getElementById('suggestions-btn');
   if (btn) btn.disabled = false;
+}
+
+// ── Copy to clipboard helper ───────────────────────────────
+function copyFix(btn) {
+  const fixText = btn.closest('.suggestion-card').querySelector('.fix-text').innerText;
+  navigator.clipboard.writeText(fixText).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.background = 'var(--green-500)';
+    btn.style.color = '#fff';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 2000);
+  });
 }
 
 // ── Suggestions Modal ──────────────────────────────────────

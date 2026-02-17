@@ -190,6 +190,7 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
         # ── Step 8: AI suggestions ────────────────────────────────────────────
         suggestions = generate_suggestions(
             resume_text=resume_text,
+            jd_text=jd_text,
             extraction=extraction,
             score=final_score,
             weak_areas=weak_areas,

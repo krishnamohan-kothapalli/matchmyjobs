@@ -316,76 +316,89 @@ def _empty_extraction() -> dict:
 # PROMPT 2 — Improvement suggestions
 # ─────────────────────────────────────────────────────────────────────────────
 
-_SUGGESTIONS_PROMPT = """You are an expert resume coach and ATS specialist.
+# ─────────────────────────────────────────────────────────────────────────────
+# PROMPT 2 — Improvement suggestions
+# ─────────────────────────────────────────────────────────────────────────────
 
-A candidate scored {score}/100 for this role: {job_title}
+_SUGGESTIONS_PROMPT = """You are an expert resume writer and ATS specialist. Your job is to rewrite parts of this candidate's resume so they score higher when analysed against the job description.
 
+ROLE APPLIED FOR: {job_title}
+CURRENT ATS SCORE: {score}/100
 MISSING REQUIRED SKILLS: {missing}
-WEAK AREAS DETECTED: {weak_areas}
-ALL REQUIRED SKILLS: {required_skills}
+MATCHED SKILLS: {matched}
+JD RESPONSIBILITIES: {responsibilities}
+WEAK AREAS: {weak_areas}
 
-RESUME:
+ACTUAL RESUME TEXT:
 {resume_text}
 
-Provide exactly 5 specific, actionable improvements prioritised by ATS impact.
+JOB DESCRIPTION:
+{jd_text}
+
+Generate exactly 5 suggestions. Each suggestion must contain a READY-TO-USE rewrite — not advice, but the actual new text the candidate can copy directly into their resume.
+
 Return ONLY valid JSON, no explanation:
 {{
   "suggestions": [
     {{
-      "area": "exact section name (e.g. Professional Summary, Skills Section, Experience Bullets)",
+      "area": "exact section (Professional Summary | Skills Section | Experience - [Company Name] | Education)",
       "priority": "high|medium|low",
-      "issue": "one sentence describing the specific gap or problem",
-      "fix": "exact text the candidate can copy-paste — a rewritten bullet, sentence, or skill addition",
-      "impact": "one sentence explaining the ATS score improvement"
+      "issue": "one sentence: what specific gap this fixes",
+      "original": "the exact current text from their resume being replaced (or 'N/A - new addition')",
+      "fix": "the complete replacement text, ready to copy-paste into the resume as-is",
+      "score_impact": "which score component this improves and by roughly how much (e.g. +5-8pts Keyword Match)"
     }}
   ]
 }}
 
-Rules:
-- Prioritise missing required skills first — suggest exact wording to add them
-- Fixes must be copy-paste ready, not vague advice like "add more details"
-- At least 2 fixes should be specific Experience bullet rewrites with metrics
-- At least 1 fix should address keyword placement in Summary
-- Keep each fix under 60 words
-- Be domain-specific — use exact terminology from the JD"""
+STRICT RULES for the "fix" field:
+1. SUMMARY rewrite: Write a complete 2-3 sentence summary that naturally includes the missing skills and mirrors JD language
+2. SKILLS addition: List the exact skill names from the JD that are missing — use the JD's exact terminology
+3. EXPERIENCE bullet rewrites: Rewrite 2-3 actual bullets from their resume, adding missing keywords and metrics. Use their real job title and context, just add the keywords naturally
+4. Keep each fix under 80 words
+5. Never say "add X here" or "consider adding" — write the actual content
+6. Use exact JD terminology — if JD says "CI/CD pipelines" write "CI/CD pipelines" not "deployment automation"
+7. If a skill is missing from their resume, show how to naturally work it into existing experience context"""
 
 
 def generate_suggestions(
     resume_text:    str,
+    jd_text:        str,
     extraction:     dict,
     score:          float,
     weak_areas:     list,
 ) -> list:
     """
     Generate specific copy-paste resume fixes based on extraction findings.
-    
-    ENHANCED: Uses smart truncation for long resumes + fallback suggestions.
-    
+    Passes full resume + JD context so Claude can rewrite actual content.
     Returns list of suggestion dicts. Falls back to rule-based if AI fails.
     """
     try:
         client = _get_client()
 
-        missing_str  = ", ".join(extraction.get("missing_skills", [])[:10]) or "none"
-        req_str      = ", ".join(extraction.get("jd_required_skills", [])[:12]) or "none"
-        title        = extraction.get("job_title", "target role")
-        weak_str     = ", ".join(weak_areas) if weak_areas else "keyword placement, quantified impact"
+        missing_str       = ", ".join(extraction.get("missing_skills", [])[:12]) or "none"
+        matched_str       = ", ".join(extraction.get("matched_skills", [])[:10]) or "none"
+        responsibilities  = "; ".join(extraction.get("jd_responsibilities", [])[:5]) or "none"
+        title             = extraction.get("job_title", "target role")
+        weak_str          = ", ".join(weak_areas) if weak_areas else "keyword placement"
 
-        # ENHANCED: Smart truncation for long resumes
-        truncated_resume = _smart_truncate(resume_text, 3500)
+        truncated_resume  = _smart_truncate(resume_text, 3000)
+        truncated_jd      = _smart_truncate(jd_text, 2000)
 
         response = client.messages.create(
             model=_MODEL,
-            max_tokens=2000,
+            max_tokens=3000,
             messages=[{
                 "role": "user",
                 "content": _SUGGESTIONS_PROMPT.format(
                     score=score,
                     job_title=title,
                     missing=missing_str,
+                    matched=matched_str,
+                    responsibilities=responsibilities,
                     weak_areas=weak_str,
-                    required_skills=req_str,
                     resume_text=truncated_resume,
+                    jd_text=truncated_jd,
                 )
             }]
         )
@@ -393,11 +406,11 @@ def generate_suggestions(
         raw         = _clean_json(response.content[0].text)
         parsed      = json.loads(raw)
         suggestions = parsed.get("suggestions", [])
-        
+
         if not suggestions:
             logger.warning("AI returned no suggestions, using fallback")
             return _generate_fallback_suggestions(extraction, weak_areas, score)
-        
+
         logger.info("Generated %d suggestions (model=%s)", len(suggestions), _MODEL)
         return suggestions
 

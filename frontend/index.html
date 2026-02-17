@@ -28,8 +28,28 @@
         <a href="#how-it-works">How it Works</a>
         <a href="#pricing">Pricing</a>
       </div>
+      <div class="nav-auth" id="nav-auth">
+        <!-- Populated by JS below -->
+      </div>
     </div>
   </nav>
+
+  <script>
+    // Show correct nav based on auth state
+    (function() {
+      const email = localStorage.getItem('userEmail');
+      const navAuth = document.getElementById('nav-auth');
+      if (email) {
+        navAuth.innerHTML = `
+          <a href="dashboard.html" style="color:var(--text-muted,#64748b);font-size:0.85rem;text-decoration:none;font-weight:500;margin-right:0.5rem">Dashboard</a>
+          <span style="font-size:0.8rem;color:var(--text-muted,#64748b);margin-right:0.75rem">${email}</span>
+          <button onclick="localStorage.clear();location.reload()" style="background:transparent;border:1px solid #e2e8f0;border-radius:8px;padding:0.35rem 0.75rem;font-size:0.8rem;cursor:pointer;color:#64748b">Sign Out</button>
+        `;
+      } else {
+        navAuth.innerHTML = `<a href="auth.html" style="background:#10b981;color:white;padding:0.4rem 1rem;border-radius:8px;font-size:0.85rem;font-weight:600;text-decoration:none">Sign In</a>`;
+      }
+    })();
+  </script>
 
   <!-- Hero Section -->
   <section class="hero">

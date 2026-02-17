@@ -9,8 +9,20 @@ import os
 from models import AnalysisRequest
 from engine import nlp, run_analysis
 from auth_google import router as google_auth_router
-from usage_api import router as usage_router
-from database import check_db_connection, get_db, get_user_by_email, check_analysis_limit, increment_analysis_count
+
+# ---------------------------------------------------------------------------
+# Database imports — fail-safe so backend runs even if DB not configured
+# ---------------------------------------------------------------------------
+DB_AVAILABLE = False
+try:
+    from usage_api import router as usage_router
+    from auth_api import router as auth_router
+    from database import check_db_connection, get_db, get_user_by_email, check_analysis_limit, increment_analysis_count
+    DB_AVAILABLE = True
+except Exception as e:
+    logging.warning(f"⚠️  Database module unavailable: {e}. Running without DB tracking.")
+    usage_router = None
+    auth_router = None
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -19,9 +31,12 @@ from database import check_db_connection, get_db, get_user_by_email, check_analy
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="MatchMetric API", version="3.0")
+app = FastAPI(title="MatchMetric API", version="4.0")
 app.include_router(google_auth_router)
-app.include_router(usage_router)
+if usage_router:
+    app.include_router(usage_router)
+if auth_router:
+    app.include_router(auth_router)
 
 # Check database connection on startup
 @app.on_event("startup")

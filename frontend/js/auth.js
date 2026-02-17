@@ -1,12 +1,14 @@
 // Auth Page JavaScript
 
-// Switch between signin and signup tabs
+const API = 'https://matchmyjobs.onrender.com';
+
+// ── Tab switching ────────────────────────────────────────────
 function switchTab(tab) {
   const signinTab = document.getElementById('tab-signin');
   const signupTab = document.getElementById('tab-signup');
   const signinForm = document.getElementById('form-signin');
   const signupForm = document.getElementById('form-signup');
-  
+
   if (tab === 'signin') {
     signinTab.classList.add('active');
     signupTab.classList.remove('active');
@@ -18,148 +20,160 @@ function switchTab(tab) {
     signinForm.style.display = 'none';
     signupForm.style.display = 'block';
   }
+  clearError();
 }
 
-// Handle Sign In
+function showError(msg) {
+  let el = document.getElementById('auth-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'auth-error';
+    el.style.cssText = 'background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:0.75rem 1rem;border-radius:8px;font-size:0.85rem;margin-bottom:1rem;';
+    document.querySelector('.auth-box').prepend(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearError() {
+  const el = document.getElementById('auth-error');
+  if (el) el.style.display = 'none';
+}
+
+function setLoading(formId, loading) {
+  const btn = document.querySelector(`#${formId} button[type="submit"]`);
+  if (btn) {
+    btn.disabled = loading;
+    btn.textContent = loading ? 'Please wait...' : (formId === 'form-signin' ? 'Sign In' : 'Create Account');
+  }
+}
+
+function saveSession(data) {
+  localStorage.setItem('authToken', data.token);
+  localStorage.setItem('userEmail', data.email);
+  localStorage.setItem('userName', data.name);
+  localStorage.setItem('usageData', JSON.stringify({
+    analysesUsed: data.analysesUsed || 0,
+    analysesLimit: data.analysesLimit || 2,
+    userTier: data.tier || 'free',
+    lastUsed: new Date().toISOString()
+  }));
+}
+
+// ── Sign In ──────────────────────────────────────────────────
 document.getElementById('form-signin').addEventListener('submit', async function(e) {
   e.preventDefault();
-  
-  const email = document.getElementById('signin-email').value;
+  clearError();
+
+  const email = document.getElementById('signin-email').value.trim();
   const password = document.getElementById('signin-password').value;
-  
+
+  if (!email || !password) {
+    showError('Please enter your email and password.');
+    return;
+  }
+
+  setLoading('form-signin', true);
+
   try {
-    // TODO: Replace with actual API call
-    const response = await fetch('/api/auth/signin', {
+    const response = await fetch(`${API}/api/auth/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    
+
+    const data = await response.json();
+
     if (response.ok) {
-      const data = await response.json();
-      
-      // Store user session
-      localStorage.setItem('authToken', data.token);
-      localStorage.setItem('userEmail', email);
-      localStorage.setItem('usageData', JSON.stringify({
-        analysesUsed: data.analysesUsed || 0,
-        userTier: data.tier || 'free',
-        lastUsed: new Date().toISOString()
-      }));
-      
-      // Redirect to app
+      saveSession(data);
       window.location.href = 'index.html';
     } else {
-      alert('Invalid email or password. Please try again.');
+      showError(data.detail || 'Sign in failed. Please try again.');
     }
   } catch (error) {
-    console.error('Sign in error:', error);
-    
-    // For demo/testing: simulate successful login
-    localStorage.setItem('authToken', 'demo-token');
-    localStorage.setItem('userEmail', email);
-    localStorage.setItem('usageData', JSON.stringify({
-      analysesUsed: 0,
-      userTier: 'free',
-      lastUsed: new Date().toISOString()
-    }));
-    
-    alert('Demo mode: Signed in successfully!');
-    window.location.href = 'index.html';
+    showError('Cannot connect to server. Please try again.');
+  } finally {
+    setLoading('form-signin', false);
   }
 });
 
-// Handle Sign Up
+// ── Sign Up ──────────────────────────────────────────────────
 document.getElementById('form-signup').addEventListener('submit', async function(e) {
   e.preventDefault();
-  
-  const name = document.getElementById('signup-name').value;
-  const email = document.getElementById('signup-email').value;
+  clearError();
+
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
-  
-  if (password.length < 8) {
-    alert('Password must be at least 8 characters long.');
+
+  if (!name || !email || !password) {
+    showError('Please fill in all fields.');
     return;
   }
-  
+  if (password.length < 8) {
+    showError('Password must be at least 8 characters.');
+    return;
+  }
+
+  setLoading('form-signup', true);
+
   try {
-    // TODO: Replace with actual API call
-    const response = await fetch('/api/auth/signup', {
+    const response = await fetch(`${API}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password })
     });
-    
+
+    const data = await response.json();
+
     if (response.ok) {
-      const data = await response.json();
-      
-      // Store user session
-      localStorage.setItem('authToken', data.token);
-      localStorage.setItem('userEmail', email);
-      localStorage.setItem('userName', name);
-      localStorage.setItem('usageData', JSON.stringify({
-        analysesUsed: 0,
-        userTier: 'free',
-        maxAnalyses: 2,
-        lastUsed: new Date().toISOString()
-      }));
-      
-      // Redirect to app
-      alert('Account created! You have 2 free analyses. Let\'s get started!');
+      saveSession(data);
       window.location.href = 'index.html';
     } else {
-      const error = await response.json();
-      alert(error.message || 'Sign up failed. Please try again.');
+      showError(data.detail || 'Sign up failed. Please try again.');
     }
   } catch (error) {
-    console.error('Sign up error:', error);
-    
-    // For demo/testing: simulate successful signup
-    localStorage.setItem('authToken', 'demo-token');
-    localStorage.setItem('userEmail', email);
-    localStorage.setItem('userName', name);
-    localStorage.setItem('usageData', JSON.stringify({
-      analysesUsed: 0,
-      userTier: 'free',
-      maxAnalyses: 2,
-      lastUsed: new Date().toISOString()
-    }));
-    
-    alert('Demo mode: Account created! You have 2 free analyses.');
-    window.location.href = 'index.html';
+    showError('Cannot connect to server. Please try again.');
+  } finally {
+    setLoading('form-signup', false);
   }
 });
 
-// Google Sign-In
+// ── Google OAuth ─────────────────────────────────────────────
 function signInWithGoogle() {
-  // Store return URL
   sessionStorage.setItem('authReturnUrl', window.location.href);
-  
-  // Redirect to backend OAuth endpoint
-  window.location.href = 'https://matchmyjobs.onrender.com/auth/google/login';
+  window.location.href = `${API}/auth/google/login`;
 }
 
-// Handle OAuth callback
+// ── Google OAuth Callback ────────────────────────────────────
 window.addEventListener('load', function() {
   const urlParams = new URLSearchParams(window.location.search);
-  
+
   if (urlParams.has('token')) {
-    // OAuth success - store token
     const token = urlParams.get('token');
     const email = urlParams.get('email');
     const name = urlParams.get('name');
-    
+
     localStorage.setItem('authToken', token);
     localStorage.setItem('userEmail', email);
     localStorage.setItem('userName', name);
     localStorage.setItem('usageData', JSON.stringify({
       analysesUsed: 0,
+      analysesLimit: 2,
       userTier: 'free',
-      maxAnalyses: 2,
       lastUsed: new Date().toISOString()
     }));
-    
-    alert('Signed in successfully!');
+
     window.location.href = 'index.html';
   }
+
+  if (urlParams.has('error')) {
+    showError('Google sign-in failed. Please try again.');
+  }
 });
+
+// ── Already logged in? ───────────────────────────────────────
+if (localStorage.getItem('authToken') && localStorage.getItem('userEmail')) {
+  // Already logged in - show dashboard link in UI if desired
+  // window.location.href = 'index.html'; // Uncomment to auto-redirect
+}

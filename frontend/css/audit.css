@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 /* MatchMetric v3.0 — Enhanced Audit Styles */
 :root {
   --sage-50:  #f8f9fa;
@@ -16,7 +18,7 @@
   --red-500:   #ef4444;
   --yellow-500: #f59e0b;
   
-  --font-sans: 'Inter', -apple-system, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'Berkeley Mono', 'SF Mono', monospace;
   
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);

@@ -26,23 +26,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ── Score weights (maps to v5.0 output keys) ─────────────────────────────────
-W_KEYWORD_OVERLAP   = 30   # keyword_overlap    /30
-W_SEMANTIC          = 10   # feeds into keyword_placement
-W_PLACEMENT         = 10   # keyword_placement  /20 (combined with semantic)
-W_EXPERIENCE        = 10   # experience         /15 (approx)
-W_EDUCATION         = 10   # education          /10
-W_STRUCTURE         = 5    # structure          /5
-W_IMPACT            = 5    # impact             /5
-W_CONTACT           = 5    # contact            /5
-W_SENIORITY         = 5    # seniority          /5
-
-# ── Penalties ─────────────────────────────────────────────────────────────────
-P_MISSING_TITLE     = 8
-P_MISSING_EDU       = 5
-P_KEYWORD_STUFFING  = 5
-P_PER_MISSING_SKILL = 1
-P_MAX_SKILL_PENALTY = 15
+# ── Score weights — sum to 100 ────────────────────────────────────────────────
+W_KEYWORD_OVERLAP   = 30   # keyword_overlap
+W_SEMANTIC          = 10   # blended into keyword_placement
+W_PLACEMENT         = 10   # keyword_placement (combined with semantic = 20 max)
+W_EXPERIENCE        = 10   # experience
+W_EDUCATION         = 10   # education
+W_STRUCTURE         = 5    # structure
+W_IMPACT            = 5    # impact
+W_CONTACT           = 5    # contact
+W_SENIORITY         = 5    # seniority
 
 
 def _pct(part: int, total: int) -> float:
@@ -143,7 +136,7 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
         contact_hits    = sum(1 for c in contact.values() if c["status"] == "hit")
         contact_score   = (contact_hits / len(contact)) * W_CONTACT
 
-        # Experience: infer from seniority audit data
+        # Experience score
         exp_data        = seniority.get("experience_audit", {})
         required_years  = extraction.get("required_years", 0)
         resume_years    = exp_data.get("total_years", 0)
@@ -157,23 +150,12 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
             elif gap == 3: exp_score = W_EXPERIENCE * 0.20
             else:          exp_score = 0.0
 
-        raw_score = (
+        final_score = max(0.0, min(100.0, round(
             keyword_score + semantic_score + placement_score +
             structure_score + seniority_score + impact_score +
-            education_score + contact_score + exp_score
-        )
-
-        # ── Step 5: Penalties ─────────────────────────────────────────────────
-        penalty = 0
-        if title_info["status"] == "miss":
-            penalty += P_MISSING_TITLE
-        if education["status"] == "miss" and "Hard Gate" in education.get("msg", ""):
-            penalty += P_MISSING_EDU
-        if stuffing_check["status"] == "miss":
-            penalty += P_KEYWORD_STUFFING
-        penalty += min(len(missing) * P_PER_MISSING_SKILL, P_MAX_SKILL_PENALTY)
-
-        final_score = max(0.0, min(100.0, round(raw_score - penalty, 1)))
+            education_score + contact_score + exp_score,
+            1
+        )))
 
         # ── Step 6: Tier + outlook ────────────────────────────────────────────
         if final_score >= 85:
@@ -284,7 +266,6 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
             "structure":         round(structure_score, 1),
             "impact":            round(impact_score, 1),
             "seniority":         round(seniority_score, 1),
-            "penalties":         -round(penalty, 1),
         }
 
         # ── Step 12: ATS-specific scores (v5.0 compat) ───────────────────────
@@ -359,7 +340,7 @@ def _generate_fallback_response() -> dict:
         "score_breakdown": {
             "keyword_overlap": 0, "keyword_placement": 0, "experience": 0,
             "education": 0, "formatting": 0, "contact": 0, "structure": 0,
-            "impact": 0, "seniority": 0, "penalties": 0
+            "impact": 0, "seniority": 0
         },
         "ats_specific_scores": {
             "workday_score": "N/A", "greenhouse_rank": "N/A",

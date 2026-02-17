@@ -149,26 +149,17 @@ function renderScoreBreakdown(breakdown) {
   const container = document.getElementById("score-breakdown");
   if (!container) return;
   
-  // Order matches audit sections from top to bottom
+  // New 100-point system with correct max values
   const rows = [
-    // Skills section
-    { label: "Keyword Overlap",   key: "keyword_overlap",   max: 35 },
-    { label: "Semantic Match",    key: "semantic_match",    max: 20 },
-    
-    // Contact & Searchability
-    { label: "Contact",           key: "contact",           max: 5  },
-    
-    // Document Structure
-    { label: "Structure",         key: "structure",         max: 10 },
-    
-    // Alignment & Seniority
-    { label: "Seniority",         key: "seniority",         max: 10 },
-    
-    // Keyword Intelligence
-    { label: "Keyword Placement", key: "keyword_placement", max: 15 },
-    
-    // Experience & Qualifications
-    { label: "Impact",            key: "impact",            max: 5  },
+    { label: "Keyword Match",      key: "keyword_overlap",   max: 30 },
+    { label: "Keyword Placement",  key: "keyword_placement", max: 20 },
+    { label: "Experience",         key: "experience",        max: 15 },
+    { label: "Education",          key: "education",         max: 10 },
+    { label: "Formatting",         key: "formatting",        max: 10 },
+    { label: "Contact Info",       key: "contact",           max: 5  },
+    { label: "Structure",          key: "structure",         max: 5  },
+    { label: "Impact",             key: "impact",            max: 5  },
+    { label: "Seniority",          key: "seniority",         max: 5  },
   ];
   
   const html = rows.map(row => {
@@ -176,12 +167,13 @@ function renderScoreBreakdown(breakdown) {
     const pct = Math.round((val / row.max) * 100);
     const color = getScoreColor(pct);
     
+    // Show as "X/MAX" instead of percentage
     return `
       <div class="breakdown-item">
         <div class="breakdown-header">
           <span class="breakdown-name">${row.label}</span>
           <span class="breakdown-value" style="color:${color};">
-            ${pct}%
+            ${val.toFixed(1)}/${row.max}
           </span>
         </div>
         <div class="breakdown-bar">

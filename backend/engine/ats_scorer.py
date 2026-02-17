@@ -607,23 +607,23 @@ def score_quantified_impact(resume_text: str) -> Dict:
     if metrics_found >= 8:
         score = 5
         tier = "excellent"
-        behavior = "Workday AI: High impact score. Metrics throughout resume = top-tier ranking."
+        behavior = "✓ Excellent impact: {metrics_found} quantified achievements detected. Workday AI will rank you highly — metrics like these move candidates to the top of the list."
     elif metrics_found >= 5:
         score = 4
         tier = "good"
-        behavior = "Workday AI: Good impact signals. Several quantified achievements detected."
+        behavior = f"✓ Good start: {metrics_found} quantified achievements found. Add 1-2 more for even stronger Workday AI ranking."
     elif metrics_found >= 3:
         score = 2.5
         tier = "moderate"
-        behavior = "Workday AI: Some metrics present. Add more for higher ranking."
+        behavior = f"↗ On the right track: {metrics_found} metrics detected. Quick win: Add 2-3 more numbers to your bullets (%, team size, time saved) to boost your ranking significantly."
     elif metrics_found >= 1:
         score = 1
         tier = "weak"
-        behavior = "Workday AI: Minimal metrics. Add numbers to improve ranking significantly."
+        behavior = f"💡 Low impact signals: Only {metrics_found} metric found. Adding numbers makes a huge difference — try 'Improved performance by 30%' instead of 'Improved performance'."
     else:
         score = 0
         tier = "none"
-        behavior = "Workday AI: No quantified results. Resume ranked lower than candidates with metrics."
+        behavior = "⚠ Missing metrics: No quantified results detected. Workday's AI heavily weights numbers. Add 3-5 achievements with %, $, or scale (e.g., 'Led team of 5', 'Reduced costs by $50K')."
     
     return {
         "score": score,

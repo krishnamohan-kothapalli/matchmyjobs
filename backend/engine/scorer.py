@@ -174,20 +174,21 @@ def _build_audit_sections(breakdown: dict, extraction: dict) -> dict:
     seniority = breakdown["seniority_match"]
     
     matched = len(extraction.get("matched_skills", []))
-    required = len(extraction.get("jd_required_skills", []))
+    missing = len(extraction.get("missing_skills", []))
+    total_required = matched + missing  # Total skills needed
     match_rate = keyword_match.get("match_rate", 0)
     
     return {
         "Contact & Searchability": [
             {
                 "status": "hit" if contact["has_email"] else "miss",
-                "msg": "Email detected. ATS can contact you." if contact["has_email"] else 
-                       "Email missing. All ATS systems require email for communication."
+                "msg": "✓ Email detected. ATS can contact you." if contact["has_email"] else 
+                       "✕ Email missing. All ATS systems require email for communication."
             },
             {
                 "status": "hit" if contact["has_phone"] else "miss",
-                "msg": "Phone detected. Interview scheduling possible." if contact["has_phone"] else
-                       "Phone missing. ATS systems require phone for scheduling."
+                "msg": "✓ Phone detected. Interview scheduling possible." if contact["has_phone"] else
+                       "✕ Phone missing. ATS systems require phone for scheduling."
             },
             {
                 "status": "hit" if contact["has_location"] else "miss",
@@ -202,8 +203,8 @@ def _build_audit_sections(breakdown: dict, extraction: dict) -> dict:
             },
             {
                 "status": "hit" if structure["has_dates"] else "miss",
-                "msg": "Chronological dates detected. Work history timeline clear." if structure["has_dates"] else
-                       "Dates missing. ATS systems need dates to calculate experience."
+                "msg": "✓ Chronological dates detected. Work history timeline clear." if structure["has_dates"] else
+                       "✕ Dates missing. ATS systems need dates to calculate experience."
             }
         ],
         
@@ -218,9 +219,8 @@ def _build_audit_sections(breakdown: dict, extraction: dict) -> dict:
             },
             {
                 "status": "hit" if match_rate >= 60 else "miss",
-                "msg": f"Skill Coverage: {matched}/{required} required skills matched ({round(match_rate)}%). " + 
-                       ("Strong coverage for ATS parsing." if match_rate >= 60 else 
-                        f"Add missing skills to reach 60%+ threshold.")
+                "msg": (f"✓ Skill Coverage: {matched}/{total_required} required skills matched ({round(match_rate)}%). Strong coverage for ATS parsing." if match_rate >= 60 else 
+                        f"⚠ Skill Gap: {matched}/{total_required} required skills matched ({round(match_rate)}%). Add {missing} missing skill{'s' if missing != 1 else ''} to reach 60%+ threshold.")
             }
         ],
         
@@ -246,9 +246,8 @@ def _build_audit_sections(breakdown: dict, extraction: dict) -> dict:
             },
             {
                 "status": "hit" if impact["metrics_count"] >= 5 else "miss",
-                "msg": f"Metrics count: {impact['metrics_count']} quantified achievements. " +
-                       ("Strong impact signals throughout resume." if impact["metrics_count"] >= 5 else
-                        "Add more numbers/metrics to experience bullets.")
+                "msg": (f"✓ Strong metrics: {impact['metrics_count']} quantified achievements detected. Excellent!" if impact["metrics_count"] >= 5 else
+                        f"💡 Quick win opportunity: {impact['metrics_count']} metric{'s' if impact['metrics_count'] != 1 else ''} found. Add {5 - impact['metrics_count']} more numbers to your bullets for better Workday ranking. Examples: '% improvement', 'team size', '$ saved', 'users impacted'.")
             }
         ],
         

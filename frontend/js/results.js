@@ -208,23 +208,45 @@ function renderScoreBreakdown(breakdown) {
 
 // ── Suggestions Button (Always Visible) ───────────────────
 function renderSuggestions(suggestions, score) {
-  // Suggestions are now shown on-demand via modal
-  // Card with button is always visible in HTML
-  const card = document.getElementById("suggestions-card");
-  if (card) {
-    card.style.display = "block";
+  // Use the new modal HTML already in audit.html
+  if (window.renderSuggestions && window.renderSuggestions !== renderSuggestions) {
+    window.renderSuggestions(suggestions);
+  } else {
+    // Fallback: render into modal-body directly
+    if (!suggestions || !suggestions.length) return;
+    const body = document.getElementById('suggestions-body');
+    if (!body) return;
+    body.innerHTML = suggestions.map(s => {
+      const p = s.priority || 'medium';
+      const systems = (s.ats_systems || []).map(sys => `<span class="system-badge">${sys}</span>`).join('');
+      return `<div class="suggestion-card priority-${p}">
+        <div class="suggestion-header">
+          <span class="suggestion-priority">${p.toUpperCase()}</span>
+          <div><div class="suggestion-area">${s.area || ''}</div>
+          <div class="suggestion-systems">${systems}</div></div>
+        </div>
+        <p class="suggestion-issue">${s.issue || ''}</p>
+        ${s.fix ? `<pre class="suggestion-fix">${s.fix}</pre>` : ''}
+        ${s.why_it_matters ? `<p class="suggestion-issue">${s.why_it_matters}</p>` : ''}
+        ${s.score_impact ? `<p class="suggestion-impact">📈 ${s.score_impact}</p>` : ''}
+      </div>`;
+    }).join('');
   }
+  // Enable the suggestions button
+  const btn = document.getElementById('suggestions-btn');
+  if (btn) btn.disabled = false;
 }
 
 // ── Suggestions Modal ──────────────────────────────────────
 window.showSuggestionsModal = function() {
   const data = JSON.parse(localStorage.getItem('auditResults') || '{}');
-  const score = data.score || 0;
-  const suggestions = data.suggestions || [];
-  
-  showSuggestionsAndOptimizeModal(score, suggestions);
-  
-  trackEvent('Suggestions Modal Opened', { score: Math.round(score) });
+  const score = Math.round(data.score || 0);
+  const modal = document.getElementById('suggestions-modal');
+  if (modal) {
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  trackEvent('Suggestions Modal Opened', { score });
 };
 
 function showSuggestionsAndOptimizeModal(score, suggestions) {
@@ -432,6 +454,20 @@ window.copyToClipboard = function(text, button) {
 };
 
 // ── Audit Sections ─────────────────────────────────────────
+
+// ── ATS System Score Cards ─────────────────────────────────
+function renderATSSystemScores(atsScores) {
+  if (!atsScores) return;
+  const el = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val && val !== 'N/A') el.textContent = val;
+  };
+  el('ats-workday',    atsScores.workday_score);
+  el('ats-greenhouse', atsScores.greenhouse_rank);
+  el('ats-taleo',      atsScores.taleo_match);
+  el('ats-icims',      atsScores.icims_score);
+}
+
 function renderAuditSections(audit) {
   const container = document.getElementById("audit-sections");
   if (!container) return;
@@ -723,6 +759,7 @@ window.onload = function () {
     renderTags("missing-tags", data.missing, "missing");
     renderTags("soft-tags", data.soft_skills, "matched");
     renderScoreBreakdown(data.score_breakdown);
+    renderATSSystemScores(data.ats_specific_scores);
     renderSuggestions(data.suggestions, data.score);
     renderAuditSections(data.audit);
     renderDensityChart(data.density);

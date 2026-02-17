@@ -32,7 +32,8 @@ W_SEMANTIC          = 10   # blended into keyword_placement
 W_PLACEMENT         = 10   # keyword_placement (combined with semantic = 20 max)
 W_EXPERIENCE        = 10   # experience
 W_EDUCATION         = 10   # education
-W_STRUCTURE         = 5    # structure
+W_STRUCTURE         = 3    # structure (section headings)
+W_FORMATTING        = 2    # formatting (date consistency)
 W_IMPACT            = 5    # impact
 W_CONTACT           = 5    # contact
 W_SENIORITY         = 5    # seniority
@@ -125,8 +126,9 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
         placement_score = W_PLACEMENT if placement["status"] == "hit" else (
             W_PLACEMENT * 0.4 if placement.get("summary_hits", 0) > 0 else 0
         )
-        structure_score = W_STRUCTURE if headings["status"] == "hit" else (
-            W_STRUCTURE * 0.5 if dates["status"] == "hit" else 0
+        structure_score  = W_STRUCTURE if headings["status"] == "hit" else 0
+        formatting_score = W_FORMATTING if dates["status"] == "hit" else (
+            W_FORMATTING * 0.5 if headings["status"] == "hit" else 0
         )
         seniority_score = W_SENIORITY if seniority["status"] == "hit" else W_SENIORITY * 0.3
         impact_score    = W_IMPACT if impact["status"] == "hit" else (
@@ -152,7 +154,7 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
 
         final_score = max(0.0, min(100.0, round(
             keyword_score + semantic_score + placement_score +
-            structure_score + seniority_score + impact_score +
+            structure_score + formatting_score + seniority_score + impact_score +
             education_score + contact_score + exp_score,
             1
         )))
@@ -261,7 +263,7 @@ def run_analysis(resume_text: str, jd_text: str, nlp) -> dict:
             "keyword_placement": round(min(placement_score + semantic_score, 20), 1),
             "experience":        round(exp_score, 1),
             "education":         round(education_score, 1),
-            "formatting":        round(structure_score, 1),
+            "formatting":        round(formatting_score, 1),
             "contact":           round(contact_score, 1),
             "structure":         round(structure_score, 1),
             "impact":            round(impact_score, 1),

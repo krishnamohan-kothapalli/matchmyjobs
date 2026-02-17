@@ -149,32 +149,28 @@ function renderScoreBreakdown(breakdown) {
   const container = document.getElementById("score-breakdown");
   if (!container) return;
   
-  // New 100-point system with correct max values
   const rows = [
     { label: "Keyword Match",      key: "keyword_overlap",   max: 30 },
     { label: "Keyword Placement",  key: "keyword_placement", max: 20 },
-    { label: "Experience",         key: "experience",        max: 15 },
+    { label: "Experience",         key: "experience",        max: 10 },
     { label: "Education",          key: "education",         max: 10 },
-    { label: "Formatting",         key: "formatting",        max: 10 },
+    { label: "Formatting",         key: "formatting",        max: 2  },
     { label: "Contact Info",       key: "contact",           max: 5  },
-    { label: "Structure",          key: "structure",         max: 5  },
+    { label: "Structure",          key: "structure",         max: 3  },
     { label: "Impact",             key: "impact",            max: 5  },
     { label: "Seniority",          key: "seniority",         max: 5  },
   ];
   
   const html = rows.map(row => {
     const val = breakdown[row.key] || 0;
-    const pct = Math.round((val / row.max) * 100);
+    const pct = Math.min(100, Math.round((val / row.max) * 100));
     const color = getScoreColor(pct);
     
-    // Show as "X/MAX" instead of percentage
     return `
       <div class="breakdown-item">
         <div class="breakdown-header">
           <span class="breakdown-name">${row.label}</span>
-          <span class="breakdown-value" style="color:${color};">
-            ${val.toFixed(1)}/${row.max}
-          </span>
+          <span class="breakdown-value" style="color:${color};">${pct}%</span>
         </div>
         <div class="breakdown-bar">
           <div class="breakdown-fill" style="width:${pct}%;background:${color};"></div>
@@ -183,27 +179,7 @@ function renderScoreBreakdown(breakdown) {
     `;
   }).join("");
   
-  // Add penalties if present
-  let penaltiesHtml = '';
-  if (breakdown.penalties && breakdown.penalties < 0) {
-    penaltiesHtml = `
-      <div class="breakdown-penalties">
-        <span class="label">Penalties Applied</span>
-        <span class="value">
-          ${breakdown.penalties}
-          <span class="tooltip">
-            <span class="info-icon">ℹ</span>
-            <span class="tooltip-text">
-              Score reductions for missing required elements, 
-              keyword stuffing, or structural issues
-            </span>
-          </span>
-        </span>
-      </div>
-    `;
-  }
-  
-  container.innerHTML = html + penaltiesHtml;
+  container.innerHTML = html;
 }
 
 // ── Suggestions Button (Always Visible) ───────────────────

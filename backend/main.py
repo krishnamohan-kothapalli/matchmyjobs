@@ -8,6 +8,8 @@ import os
 from models import AnalysisRequest
 from engine import nlp, run_analysis
 from auth_google import router as google_auth_router
+from usage_api import router as usage_router
+from database import check_db_connection
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -18,6 +20,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="MatchMetric API", version="3.0")
 app.include_router(google_auth_router)
+app.include_router(usage_router)  # Add usage tracking endpoints
+
+# Check database connection on startup
+@app.on_event("startup")
+async def startup_event():
+    if check_db_connection():
+        logger.info("✅ Database connected successfully")
+    else:
+        logger.warning("⚠️  Database connection failed - check DATABASE_URL")
 
 # CORS configuration
 ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")

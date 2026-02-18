@@ -1,11 +1,23 @@
 # optimizer.py
-import os, re, base64, logging, tempfile
+# ═══════════════════════════════════════════════════════════════════════════
+# Resume Optimizer
+#
+# DOCX strategy: always edit the original uploaded file in-place.
+# We never build a new DOCX from scratch — we load the original, modify
+# only the text content of runs, and save. This preserves 100% of the
+# original styles, fonts, colors, numbering, spacing, and template.
+#
+# Rewrite strategy: Claude makes surgical keyword insertions only.
+# Voice, structure, sentence length are preserved to pass AI detection.
+# ═══════════════════════════════════════════════════════════════════════════
+
+import os, re, base64, logging, io, copy
 from anthropic import Anthropic
 from docx import Document
-from docx.shared import Pt, Inches, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+import lxml.etree as ET
+from generate_docx import generate_docx
 
 logger = logging.getLogger(__name__)
 _client = None
@@ -17,378 +29,303 @@ def _get_client():
         _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     return _client
 
-# ── Rewrite prompt ────────────────────────────────────────────────────────────
-_REWRITE_PROMPT = """You are editing a resume to improve its ATS keyword score. Make surgical keyword additions only — do not rewrite, reformat, or restructure.
+
+# ── Rewrite prompt ─────────────────────────────────────────────────────────
+_REWRITE_PROMPT = """You are editing a resume to add missing keywords for a specific job. Make surgical additions only.
 
 TARGET JOB: {job_title}
-MISSING KEYWORDS TO ADD: {missing_skills}
+MISSING KEYWORDS TO WEAVE IN: {missing_skills}
 KEYWORDS TO EMPHASIZE: {matched_skills}
+CURRENT SCORE: {current_score}% — target 80%+
 
-ORIGINAL RESUME (edit this — preserve ALL formatting marks):
+ORIGINAL RESUME TEXT:
 {resume_text}
 
 JOB DESCRIPTION:
 {jd_text}
 
-STRICT RULES:
+RULES — follow exactly:
 
 NEVER CHANGE:
-- Candidate's name
-- Company names (exact spelling, capitalisation, punctuation)
-- Job titles they held
-- Locations (city, state, country)
-- Dates
-- University names
-- GPA or grades
-- Certification names and dates
+- Candidate name, company names (exact spelling), job titles held, locations, dates, university names, certification names
 
 WHAT TO CHANGE:
 - Weave missing keywords into existing bullet text where they genuinely fit
 - Reorder bullets within a role so JD-relevant ones come first
-- Add missing keywords to the Skills section only if they cannot fit in bullets
-- Strengthen the Professional Summary with 2-3 missing keywords max
+- Add missing keywords to Skills section if they cannot fit naturally in bullets
+- Add 2-3 missing keywords to the Professional Summary only
 
-VOICE RULES — critical:
+VOICE — critical for AI detection:
 - Keep every sentence structure exactly as written
-- Keep verb choices — "built" stays "built", never change to "architected" or "developed"  
-- Keep sentence length — do not expand short bullets
-- BANNED words: spearheaded, orchestrated, leveraged, robust, dynamic, synergistic, streamlined, transformative, holistic, revolutionized, catalyzed
-- Do not inflate impact — "helped build" stays "helped build"
+- Keep verb tenses and choices — "built" stays "built"
+- Keep sentence length — do not expand short bullets  
+- BANNED words: spearheaded, orchestrated, leveraged, robust, dynamic, synergistic, transformative, revolutionized, catalyzed
+- Do NOT inflate impact statements
 
-FORMAT RULES — critical:
-- Every bullet point MUST start with "• " (bullet + space)
-- Section headings must be on their own line in ALL CAPS
-- Job title on its own line
-- Company name, dates on the next line, separated by " | "
-- Skills section: each category on its own line as "Category: skill1, skill2, skill3"
-- Keep exactly one blank line between sections
-- No markdown, no asterisks, no bold markers
+OUTPUT FORMAT — critical:
+Return a JSON object where keys are paragraph indices (as strings) and values are the new paragraph text.
+Only include paragraphs you actually changed.
+For skill paragraphs that use a line break between category and items, use \\n as the separator.
+Example: {{"5": "Updated summary text here.", "7": "Automation & Testing\\nSelenium, Java, new skill"}}
 
-OUTPUT: Return ONLY the resume text. Start with the candidate's name on line 1."""
+Return ONLY the JSON object. No explanation, no markdown code fences."""
 
-def rewrite_resume(resume_text, jd_text, extraction, current_score):
-    missing  = ", ".join(extraction.get("missing_skills",      [])[:15]) or "none"
-    matched  = ", ".join(extraction.get("matched_skills",      [])[:10]) or "none"
+
+def rewrite_resume_json(resume_text, jd_text, extraction, current_score, para_map):
+    """
+    Ask Claude which paragraphs to change and what to change them to.
+    Returns dict of {para_index: new_text}.
+    """
+    missing  = ", ".join(extraction.get("missing_skills",     [])[:15]) or "none"
+    matched  = ", ".join(extraction.get("matched_skills",     [])[:10]) or "none"
     title    = extraction.get("job_title", "target role")
 
     def trunc(t, n):
         return t if len(t) <= n else t[:int(n*.72)] + "\n[...]\n" + t[-int(n*.18):]
 
-    # Pre-process resume: ensure bullets have • prefix so Claude sees the pattern
-    lines = []
-    for line in resume_text.split('\n'):
-        stripped = line.strip()
-        # Convert any bullet variant to • so Claude preserves it
-        if re.match(r'^[\-\*·▪►▸‣]\s+', stripped):
-            line = '• ' + re.sub(r'^[\-\*·▪►▸‣]\s+', '', stripped)
-        lines.append(line)
-    processed_resume = '\n'.join(lines)
+    # Build numbered paragraph map for Claude
+    numbered = "\n".join(f"[{i}] {text}" for i, text in para_map.items())
 
     resp = _get_client().messages.create(
-        model=_MODEL, max_tokens=4000,
+        model=_MODEL, max_tokens=3000,
         messages=[{"role": "user", "content": _REWRITE_PROMPT.format(
             job_title=title,
             missing_skills=missing,
             matched_skills=matched,
             current_score=round(current_score),
-            resume_text=trunc(processed_resume, 4000),
+            resume_text=trunc(numbered, 4000),
             jd_text=trunc(jd_text, 2000),
         )}]
     )
-    return resp.content[0].text.strip()
+
+    import json
+    text = resp.content[0].text.strip()
+    # Strip any accidental markdown fences
+    text = re.sub(r'^```(?:json)?\s*', '', text)
+    text = re.sub(r'\s*```$', '', text)
+
+    try:
+        changes = json.loads(text)
+        return {str(k): v for k, v in changes.items()}
+    except json.JSONDecodeError as e:
+        logger.error("Claude JSON parse failed: %s\nRaw: %s", e, text[:500])
+        return {}
 
 
-# ── DOCX generation ───────────────────────────────────────────────────────────
+# ── DOCX editing: preserve original, edit runs in place ──────────────────
 
-_SECTION_WORDS = {
-    'experience','work experience','professional experience','employment',
-    'work history','career history',
-    'education','academic background','qualifications',
-    'skills','technical skills','core competencies','competencies',
-    'summary','professional summary','profile','objective',
-    'career objective','career summary','about me',
-    'certifications','certificates','licenses',
-    'projects','key projects','selected projects',
-    'achievements','accomplishments','awards','honors',
-    'publications','research','presentations',
-    'volunteer','volunteering','community',
-    'languages','interests','hobbies','activities',
-    'references','contact','contact information',
-}
+def _clear_runs(p):
+    """Remove all w:r elements from paragraph."""
+    for r in list(p._p.findall(qn('w:r'))):
+        p._p.remove(r)
 
-EXPERIENCE_VERBS = re.compile(
-    r'^(developed|designed|built|implemented|led|managed|created|executed|performed|'
-    r'conducted|delivered|automated|collaborated|supported|identified|assisted|validated|'
-    r'worked|participated|spearheaded|coordinated|maintained|established|improved|'
-    r'analyzed|ensured|utilized|applied|drove|oversaw|handled|tested|deployed|'
-    r'configured|migrated|integrated|optimized|monitored|reported|resolved|reviewed)\b',
-    re.I
-)
+def _get_run_template(p):
+    """Get the formatting properties XML of the first meaningful run."""
+    for r in p.runs:
+        if r.text.strip():
+            rPr = r._r.find(qn('w:rPr'))
+            return rPr
+    return None
 
-SKILL_CATEGORY_RE = re.compile(r'^([A-Za-z][^:\|\n]{2,40})[:\|]\s*\S')
+def _make_run_xml(text, rPr_template=None, bold=False, preserve_space=True):
+    """Build a w:r element with given text and optional bold override."""
+    W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    r_el = OxmlElement('w:r')
 
-def _classify(line):
-    """Return line type: name|contact|section|job_header|company_date|skill_category|bullet|blank|body"""
-    s = line.strip()
-    if not s:
-        return 'blank'
+    # Copy rPr from template
+    if rPr_template is not None:
+        rPr = copy.deepcopy(rPr_template)
+        # Apply bold override
+        b_el  = rPr.find(qn('w:b'))
+        bCs_el = rPr.find(qn('w:bCs'))
+        if bold:
+            if b_el is None:
+                b_el = OxmlElement('w:b')
+                rPr.insert(0, b_el)
+            if bCs_el is None:
+                bCs_el = OxmlElement('w:bCs')
+                rPr.insert(1, bCs_el)
+        else:
+            if b_el is not None:  rPr.remove(b_el)
+            if bCs_el is not None: rPr.remove(bCs_el)
+        r_el.append(rPr)
+    else:
+        rPr = OxmlElement('w:rPr')
+        if bold:
+            rPr.append(OxmlElement('w:b'))
+            rPr.append(OxmlElement('w:bCs'))
+        r_el.append(rPr)
 
-    # Explicit bullet character
-    if re.match(r'^[•\-\*·▪►▸‣]\s+', s):
-        return 'bullet'
+    t_el = OxmlElement('w:t')
+    if preserve_space and (text.startswith(' ') or text.endswith(' ')):
+        t_el.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+    t_el.text = text
+    r_el.append(t_el)
+    return r_el
 
-    # Section heading — ALL CAPS, short, no year
-    clean = s.rstrip(':').lower()
-    if clean in _SECTION_WORDS:
-        return 'section'
-    if s.rstrip(':').isupper() and 3 <= len(s.rstrip(':')) <= 40 and not re.search(r'\b20\d\d\b', s):
-        return 'section'
+def _make_linebreak_run(rPr_template=None):
+    """Build a w:r containing a w:br (line break)."""
+    r_el = OxmlElement('w:r')
+    if rPr_template is not None:
+        rPr = copy.deepcopy(rPr_template)
+        r_el.append(rPr)
+    r_el.append(OxmlElement('w:br'))
+    return r_el
 
-    # Skill category line: "Category: item, item" — must have colon/pipe separator
-    if SKILL_CATEGORY_RE.match(s) and len(s) < 150 and not re.search(r'\b(20\d\d|19\d\d)\b', s):
-        return 'skill_category'
-
-    # Company | dates or tab-separated date line
-    if re.search(r'\b(20\d\d|19\d\d|present|current)\b', s, re.I):
-        if '|' in s or '\t' in s or re.search(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b', s, re.I):
-            return 'company_date'
-        return 'job_header'
-
-    # Contact info
-    if re.search(r'@\w+\.\w+|\b\d{3}[\s.\-]\d{3}[\s.\-]\d{4}\b|linkedin\.com|github\.com|http', s, re.I):
-        return 'contact'
-
-    # Experience bullet without bullet character — detect by action verb + sentence length
-    if EXPERIENCE_VERBS.match(s) and len(s) > 40 and s.endswith('.'):
-        return 'bullet'
-
-    return 'body'
-
-
-def _rule(doc, color='2E4A3E'):
-    """Thin line under section heading."""
-    p   = doc.add_paragraph()
-    pBdr = OxmlElement('w:pBdr')
-    bot  = OxmlElement('w:bottom')
-    bot.set(qn('w:val'), 'single')
-    bot.set(qn('w:sz'),  '4')
-    bot.set(qn('w:space'), '1')
-    bot.set(qn('w:color'), color)
-    pBdr.append(bot)
-    p._p.get_or_add_pPr().append(pBdr)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after  = Pt(2)
-    return p
-
-
-def _r(p, text, bold=False, size=11.0, color=None, italic=False):
-    run = p.add_run(text)
-    run.font.name   = 'Calibri'
-    run.font.size   = Pt(size)
-    run.font.bold   = bold
-    run.font.italic = italic
-    if color:
-        run.font.color.rgb = RGBColor(*color)
-    return run
-
-
-def generate_docx(resume_text):
+def _parse_segments(text):
     """
-    Convert plain-text resume to clean, ATS-safe DOCX.
-    - Single column, Calibri, standard margins
-    - No tables, text boxes, images, or headers/footers
-    - Proper bold on name, section headings, job titles, company names
-    - Bullets via Word List Bullet style
-    - Skill categories: bold label + normal items
+    Parse text with **bold** markers into list of (text, is_bold) tuples.
+    Falls back to treating entire string as non-bold if no markers found.
     """
-    doc = Document()
+    if '**' not in text:
+        return [(text, False)]
+    parts = []
+    bold = False
+    for chunk in re.split(r'\*\*', text):
+        if chunk:
+            parts.append((chunk, bold))
+        bold = not bold
+    return parts
 
-    # Page setup
-    for sec in doc.sections:
-        sec.top_margin = sec.bottom_margin = Inches(0.75)
-        sec.left_margin = sec.right_margin = Inches(1.0)
+def apply_changes_to_docx(original_path, changes):
+    """
+    Load original DOCX, apply text changes to specified paragraphs,
+    preserve all formatting, return bytes of modified DOCX.
 
-    # Default style
-    n = doc.styles['Normal']
-    n.font.name = 'Calibri'
-    n.font.size = Pt(11)
-    n.paragraph_format.space_before = Pt(0)
-    n.paragraph_format.space_after  = Pt(0)
-    n.paragraph_format.line_spacing = Pt(13.5)
+    changes: dict of {str(para_index): new_text}
+    """
+    doc = Document(original_path)
 
-    lines     = resume_text.split('\n')
-    name_done = False
-    prev_type = None
-    # Collapse consecutive blank lines
-    cleaned = []
-    prev_blank = False
-    for l in lines:
-        is_blank = not l.strip()
-        if is_blank and prev_blank:
-            continue
-        cleaned.append(l)
-        prev_blank = is_blank
-    lines = cleaned
-
-    for raw in lines:
-        line  = raw.rstrip()
-        ltype = _classify(line)
-
-        # ── Name (very first non-blank line) ─────────────────────────
-        if not name_done and ltype != 'blank':
-            name_done = True
-            p = doc.add_paragraph()
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            _r(p, line.strip(), bold=True, size=17, color=(15, 60, 45))
-            p.paragraph_format.space_after = Pt(3)
-            prev_type = 'name'
+    for idx_str, new_text in changes.items():
+        try:
+            idx = int(idx_str)
+        except ValueError:
             continue
 
-        # ── Blank line ────────────────────────────────────────────────
-        if ltype == 'blank':
-            # Only add spacer if not after section heading rule (already has space)
-            if prev_type not in ('section', 'blank'):
-                p = doc.add_paragraph()
-                p.paragraph_format.space_after = Pt(3)
-            prev_type = 'blank'
+        if idx >= len(doc.paragraphs):
+            logger.warning("Para index %d out of range (%d total)", idx, len(doc.paragraphs))
             continue
 
-        # ── Contact info ──────────────────────────────────────────────
-        if ltype == 'contact':
-            p = doc.add_paragraph()
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            _r(p, line.strip(), size=10, color=(90, 90, 90))
-            p.paragraph_format.space_after = Pt(2)
-            prev_type = 'contact'
+        p = doc.paragraphs[idx]
+
+        # Skip if text unchanged
+        if p.text.strip() == new_text.strip():
             continue
 
-        # ── Section heading ───────────────────────────────────────────
-        if ltype == 'section':
-            # Space before new section
-            sp = doc.add_paragraph()
-            sp.paragraph_format.space_before = Pt(0)
-            sp.paragraph_format.space_after  = Pt(5)
+        # Get run formatting template from original paragraph
+        rPr_template = _get_run_template(p)
 
-            p = doc.add_paragraph()
-            _r(p, line.strip().rstrip(':').upper(), bold=True, size=11, color=(15, 60, 45))
-            p.paragraph_format.space_before = Pt(0)
-            p.paragraph_format.space_after  = Pt(2)
-            _rule(doc)
-            prev_type = 'section'
-            continue
+        # Clear existing runs
+        _clear_runs(p)
 
-        # ── Job title (line by itself, not a date line) ───────────────
-        if ltype == 'job_header':
-            p = doc.add_paragraph()
-            _r(p, line.strip(), bold=True, size=11)
-            p.paragraph_format.space_before = Pt(8)
-            p.paragraph_format.space_after  = Pt(1)
-            prev_type = 'job_header'
-            continue
+        # Check if this paragraph uses \n (skill category line break)
+        if '\n' in new_text:
+            parts = new_text.split('\n', 1)
+            # Bold category name
+            p._p.append(_make_run_xml(parts[0], rPr_template, bold=True))
+            # Line break run
+            p._p.append(_make_linebreak_run(rPr_template))
+            # Normal skills text
+            p._p.append(_make_run_xml(parts[1], rPr_template, bold=False))
+        else:
+            # Parse **bold** markers if Claude used them, otherwise no bolding
+            segments = _parse_segments(new_text)
+            for text, is_bold in segments:
+                if text:
+                    p._p.append(_make_run_xml(text, rPr_template, bold=is_bold))
 
-        # ── Company | dates line ──────────────────────────────────────
-        if ltype == 'company_date':
-            p = doc.add_paragraph()
-            # Split on | or \t to bold the company name
-            if '|' in line:
-                parts = line.split('|', 1)
-                _r(p, parts[0].strip(), bold=True, size=10.5)
-                _r(p, '  |  ', bold=False, size=10.5, color=(120,120,120))
-                _r(p, parts[1].strip(), italic=True, size=10.5, color=(100,100,100))
-            elif '\t' in line:
-                parts = line.split('\t', 1)
-                _r(p, parts[0].strip(), bold=True, size=10.5)
-                _r(p, '   ', size=10.5)
-                _r(p, parts[1].strip(), italic=True, size=10.5, color=(100,100,100))
-            else:
-                _r(p, line.strip(), bold=True, size=10.5)
-            p.paragraph_format.space_before = Pt(1)
-            p.paragraph_format.space_after  = Pt(3)
-            prev_type = 'company_date'
-            continue
-
-        # ── Skill category line ───────────────────────────────────────
-        if ltype == 'skill_category':
-            p = doc.add_paragraph()
-            s = line.strip()
-            # Try explicit colon or pipe separator first
-            m = re.match(r'^([^:\|]+)[:\|]\s*(.+)$', s)
-            if m:
-                _r(p, m.group(1).strip() + ': ', bold=True, size=10.5)
-                _r(p, m.group(2).strip(), size=10.5)
-            else:
-                # Merged: "CategoryNameskill1, skill2" — split at lowercase→Capital transition
-                split = re.search(r'([a-z)])([A-Z])', s)
-                if split:
-                    cat   = s[:split.start()+1]
-                    items = s[split.start()+1:]
-                    _r(p, cat.strip() + ': ', bold=True, size=10.5)
-                    _r(p, items.strip(), size=10.5)
-                else:
-                    _r(p, s, size=10.5)
-            p.paragraph_format.left_indent  = Inches(0)
-            p.paragraph_format.space_before = Pt(2)
-            p.paragraph_format.space_after  = Pt(2)
-            prev_type = 'skill_category'
-            continue
-
-        # ── Bullet point ──────────────────────────────────────────────
-        if ltype == 'bullet':
-            text = re.sub(r'^[•\-\*·▪►▸‣]\s+', '', line.strip())
-            p = doc.add_paragraph(style='List Bullet')
-            _r(p, text, size=10.5)
-            p.paragraph_format.left_indent  = Inches(0.25)
-            p.paragraph_format.space_before = Pt(1)
-            p.paragraph_format.space_after  = Pt(1)
-            prev_type = 'bullet'
-            continue
-
-        # ── Body / fallback ───────────────────────────────────────────
-        p = doc.add_paragraph()
-        _r(p, line.strip(), size=10.5)
-        p.paragraph_format.space_before = Pt(1)
-        p.paragraph_format.space_after  = Pt(2)
-        prev_type = 'body'
-
-    # Save
-    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as tmp:
-        doc.save(tmp.name); path = tmp.name
-    with open(path, 'rb') as f: data = f.read()
-    os.unlink(path)
-    return data
+    # Save to bytes
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
 
 
-# ── Main optimizer ────────────────────────────────────────────────────────────
+# ── Main optimizer ─────────────────────────────────────────────────────────
 
-def optimize_resume(resume_text, jd_text, extraction, original_score, run_analysis_fn, nlp):
-    best_text  = resume_text
-    best_score = original_score
-    iterations = 0
+def optimize_resume(resume_text, jd_text, extraction, original_score,
+                    run_analysis_fn, nlp, original_docx_path=None):
+    """
+    Full pipeline:
+    1. Ask Claude for paragraph-level changes as JSON
+    2. Apply changes to original DOCX preserving all formatting
+    3. Score the rewritten text
+    4. Retry once if still under 80
+    5. Return result dict with docx_b64
+
+    original_docx_path: path to the uploaded .docx file.
+    If None, falls back to text-only result with no DOCX.
+    """
+    best_text   = resume_text
+    best_score  = original_score
+    best_docx   = None
+    iterations  = 0
+
+    # Build paragraph map from resume text for Claude's reference
+    def build_para_map(text):
+        lines = text.split('\n')
+        return {str(i): line for i, line in enumerate(lines) if line.strip()}
 
     while best_score < 80 and iterations < 2:
         iterations += 1
         logger.info("Optimizer pass %d — score %.1f", iterations, best_score)
+
+        para_map = build_para_map(best_text)
+
         try:
-            rewritten = rewrite_resume(best_text, jd_text, extraction, best_score)
+            changes = rewrite_resume_json(best_text, jd_text, extraction,
+                                          best_score, para_map)
+            logger.info("Claude suggested changes to %d paragraphs", len(changes))
         except Exception as e:
-            logger.error("Rewrite failed: %s", e); break
+            logger.error("Rewrite failed: %s", e)
+            break
+
+        if not changes:
+            logger.warning("No changes returned by Claude")
+            break
+
+        # Apply changes to text for scoring
+        lines = best_text.split('\n')
+        for idx_str, new_text in changes.items():
+            try:
+                idx = int(idx_str)
+                if idx < len(lines):
+                    lines[idx] = new_text
+            except ValueError:
+                pass
+        rewritten_text = '\n'.join(lines)
+
         try:
-            result    = run_analysis_fn(rewritten, jd_text, nlp)
+            result    = run_analysis_fn(rewritten_text, jd_text, nlp)
             new_score = result.get("score", best_score)
         except Exception as e:
-            logger.error("Scoring failed: %s", e); break
+            logger.error("Scoring failed: %s", e)
+            break
+
         logger.info("Pass %d: %.1f → %.1f", iterations, best_score, new_score)
+
         if new_score > best_score:
-            best_score = new_score; best_text = rewritten
+            best_score = new_score
+            best_text  = rewritten_text
+
+            # Apply to DOCX
+            if original_docx_path and os.path.exists(original_docx_path):
+                try:
+                    best_docx = apply_changes_to_docx(original_docx_path, changes)
+                    logger.info("DOCX edited OK (%d bytes)", len(best_docx))
+                except Exception as e:
+                    logger.error("DOCX edit failed: %s", e, exc_info=True)
         else:
             break
 
+    # Generate DOCX using the Rezi template from the uploaded original
     docx_b64 = None
     try:
-        docx_b64 = base64.b64encode(generate_docx(best_text)).decode('utf-8')
-        logger.info("DOCX generated OK")
+        template = original_docx_path if (original_docx_path and os.path.exists(original_docx_path)) else None
+        docx_bytes = generate_docx(best_text, template_path=template)
+        docx_b64 = base64.b64encode(docx_bytes).decode('utf-8')
+        logger.info("DOCX generated OK (%d bytes)", len(docx_bytes))
     except Exception as e:
-        logger.error("DOCX failed: %s", e, exc_info=True)
+        logger.error("DOCX generation failed: %s", e, exc_info=True)
 
     return {
         "optimized_text": best_text,

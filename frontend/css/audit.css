@@ -384,6 +384,27 @@ body {
   background: #059669;
 }
 
+.btn-optimize {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-optimize:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245,158,11,0.35);
+}
+
+.btn-optimize:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-secondary {
   background: transparent;
   color: white;

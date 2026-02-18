@@ -111,16 +111,6 @@
     .modal-close:hover { background: var(--sage-200); }
     .modal-body { overflow-y: auto; padding: 20px 24px; flex: 1; }
 
-    .modal-optimize-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; padding: 14px 20px;
-      border-top: 1px solid var(--sage-200);
-      background: #fffbeb; flex-shrink: 0; flex-wrap: wrap;
-    }
-    .modal-optimize-text { display: flex; flex-direction: column; gap: 2px; }
-    .modal-optimize-text strong { font-size: 0.875rem; color: var(--sage-900); }
-    .modal-optimize-text span   { font-size: 0.78rem;  color: var(--sage-500); }
-
     /* Suggestion cards */
     .suggestion-card {
       border: 1px solid var(--sage-200);
@@ -393,15 +383,6 @@
           <p>Run an analysis to see suggestions.</p>
         </div>
       </div>
-      <div class="modal-optimize-footer">
-        <div class="modal-optimize-text">
-          <strong>✨ Skip the manual edits</strong>
-          <span>Let AI apply all fixes and download a ready-to-submit DOCX</span>
-        </div>
-        <button class="btn-optimize btn-sm" onclick="closeSuggestionsModal(); optimizeResume();">
-          Optimize &amp; Download
-        </button>
-      </div>
     </div>
   </div>
 
@@ -422,12 +403,6 @@
             <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           AI Suggestions
-        </button>
-        <button class="btn-optimize btn-sm" id="optimize-btn" onclick="optimizeResume()" aria-label="Optimize resume" disabled>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="margin-right:4px">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Optimize Resume
         </button>
         <button class="btn-secondary btn-sm" onclick="window.location.href='analysis.html'" aria-label="New analysis">New Analysis</button>
         <button class="btn-secondary btn-sm" onclick="window.location.href='dashboard.html'" aria-label="Dashboard">Dashboard</button>

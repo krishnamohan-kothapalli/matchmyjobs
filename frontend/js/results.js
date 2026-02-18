@@ -235,9 +235,11 @@ function renderSuggestions(suggestions, score) {
       </div>`;
     }
   }
-  // Enable the suggestions button
+  // Enable the suggestions and optimize buttons
   const btn = document.getElementById('suggestions-btn');
   if (btn) btn.disabled = false;
+  const optBtn = document.getElementById('optimize-btn');
+  if (optBtn) optBtn.disabled = false;
 }
 
 // ── Copy to clipboard helper ───────────────────────────────
@@ -430,9 +432,17 @@ function showSuggestionsAndOptimizeModal(score, suggestions) {
 }
 
 window.closeSuggestionsModal = function() {
-  const modal = document.querySelector('.suggestions-modal');
+  // Use the static modal in audit.html — just hide it, never remove it
+  const modal = document.getElementById('suggestions-modal');
   if (modal) {
-    modal.remove();
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+    return;
+  }
+  // Fallback: dynamic modal (remove it)
+  const dynamic = document.querySelector('.suggestions-modal');
+  if (dynamic) {
+    dynamic.classList.remove('open');
     document.body.style.overflow = '';
   }
 };

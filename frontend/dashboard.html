@@ -26,6 +26,8 @@
 .card-head h2{font-size:1rem;font-weight:700;color:var(--ink)}
 .tier-pill{font-family:var(--font-m);font-size:.65rem;font-weight:500;text-transform:uppercase;letter-spacing:.1em;padding:.3rem .9rem;border-radius:999px;background:var(--green-l);color:var(--green-d);border:1px solid rgba(0,200,150,.2)}
 .tier-pill.pro{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.tier-pill.unlimited{background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe}
+.tier-pill.recruiter{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
 
 .usage-nums{display:flex;align-items:baseline;gap:.4rem;margin-bottom:.9rem}
 .u-used{font-family:var(--font-d);font-size:2.8rem;font-weight:800;color:var(--ink);line-height:1}
@@ -102,7 +104,7 @@
       <h3>You've reached your monthly limit</h3>
       <p>Upgrade to Analysis Pro for 50 analyses every month.</p>
     </div>
-    <button class="btn-upgrade" onclick="alert('Payment coming soon! Your account will be notified.')">Upgrade — $20 one-time</button>
+    <button class="btn-upgrade" onclick="window.location.href='index.html#pricing'">Upgrade Plan</button>
   </div>
 
   <!-- Stat cards -->
@@ -173,7 +175,7 @@ function renderFromLocal(){
   const name=localStorage.getItem('userName')||email?.split('@')[0]||'there';
   render({
     email,name,tier:u.userTier||'free',member_since:'Recently',
-    current_month:{analyses_used:u.analysesUsed||0,analyses_limit:u.analysesLimit||2,remaining:Math.max(0,(u.analysesLimit||2)-(u.analysesUsed||0)),can_analyze:(u.analysesUsed||0)<(u.analysesLimit||2),month:new Date().toLocaleString('default',{month:'long',year:'numeric'})},
+    current_month:{analyses_used:u.analysesUsed||0,analyses_limit:u.analysesLimit||5,remaining:Math.max(0,(u.analysesLimit||5)-(u.analysesUsed||0)),can_analyze:(u.analysesUsed||0)<(u.analysesLimit||5),month:new Date().toLocaleString('default',{month:'long',year:'numeric'})},
     usage_history:[],stats:{total_analyses:u.analysesUsed||0,months_active:1}
   });
 }
@@ -199,7 +201,9 @@ function render(d){
   fill.className='prog-fill'+(pct>=100?' full':pct>=80?' warn':'');
   const pill=document.getElementById('tier-pill');
   pill.textContent=formatTier(d.tier);
-  if(d.tier!=='free') pill.classList.add('pro');
+  if(d.tier==='job_seeker') pill.classList.add('pro');
+  if(d.tier==='unlimited') pill.classList.add('unlimited');
+  if(d.tier==='recruiter') pill.classList.add('recruiter');
 
   if(!cm.can_analyze){
     document.getElementById('usage-hint').textContent='Limit reached — resets on the 1st of next month.';
@@ -234,9 +238,9 @@ function render(d){
     </table>`;
 }
 
-function formatTier(t){ return{free:'Free',analysis_pro:'Pro',optimize:'Optimize'}[t]||'Free'; }
-function formatPlan(t){ return{free:'Free Plan',analysis_pro:'Analysis Pro',optimize:'Optimize Plan'}[t]||'Free Plan'; }
-function formatPlanFull(t){ return{free:'Free (2 analyses/month)',analysis_pro:'Analysis Pro (50 analyses/month)',optimize:'Optimize (50 analyses + 25 rewrites/month)'}[t]||'Free (2 analyses/month)'; }
+function formatTier(t){ return{free:'Free',job_seeker:'Job Seeker',unlimited:'Unlimited',recruiter:'Recruiter'}[t]||'Free'; }
+function formatPlan(t){ return{free:'Free Plan',job_seeker:'Job Seeker',unlimited:'Unlimited',recruiter:'Recruiter'}[t]||'Free Plan'; }
+function formatPlanFull(t){ return{free:'Free (5 analyses/month)',job_seeker:'Job Seeker (120 analyses/month)',unlimited:'Unlimited (500 analyses/month)',recruiter:'Recruiter (1,000 analyses/month)'}[t]||'Free (5 analyses/month)'; }
 function fmtMonth(s){ const [y,m]=s.split('-'); return new Date(+y,+m-1,1).toLocaleString('default',{month:'long',year:'numeric'}); }
 
 const io=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}}),{threshold:.1});

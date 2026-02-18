@@ -203,15 +203,17 @@ def check_analysis_limit(db, user_id: int):
     usage = get_current_month_usage(db, user_id)
     
     # Define limits per tier
-    limits = {
-        "free": 2,
-        "analysis_pro": 50,
-        "optimize": 50
+    TIER_LIMITS = {
+        "free":       {"analyses": 5,    "optimizations": 1},
+        "job_seeker": {"analyses": 120,  "optimizations": 5},
+        "unlimited":  {"analyses": 500,  "optimizations": 15},
+        "recruiter":  {"analyses": 1000, "optimizations": 50},
     }
-    
-    limit = limits.get(user.tier, 2)
+
+    tier_config = TIER_LIMITS.get(user.tier, TIER_LIMITS["free"])
+    limit = tier_config["analyses"]
     can_analyze = usage.analyses_count < limit
-    
+
     return can_analyze, usage.analyses_count, limit
 
 
@@ -223,7 +225,7 @@ if __name__ == "__main__":
     # Test database connection
     print("Testing database connection...")
     if check_db_connection():
-        print("✅ Database connected successfully!")
+        print(" Database connected successfully!")
         
         # Example: Query users
         db = SessionLocal()
@@ -235,5 +237,5 @@ if __name__ == "__main__":
         
         db.close()
     else:
-        print("❌ Database connection failed!")
+        print(" Database connection failed!")
         print("Check your DATABASE_URL environment variable")

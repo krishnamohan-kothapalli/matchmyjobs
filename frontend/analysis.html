@@ -209,7 +209,7 @@ function signOut(){ localStorage.clear(); window.location.href='auth.html'; }
 // Usage display
 (function(){
   const u = JSON.parse(localStorage.getItem('usageData')||'{}');
-  const used = u.analysesUsed||0, limit = u.analysesLimit||2;
+  const used = u.analysesUsed||0, limit = u.analysesLimit||5;
   const dot = document.getElementById('usage-dot'), cnt = document.getElementById('usage-count');
   cnt.textContent = `${used} / ${limit}`;
   if(used>=limit){ dot.className='usage-dot danger'; }
@@ -363,7 +363,7 @@ async function startAnalysis(){
 
   // Check usage limit
   const u = JSON.parse(localStorage.getItem('usageData')||'{}');
-  const used = u.analysesUsed||0, limit = u.analysesLimit||2, tier = u.userTier||'free';
+  const used = u.analysesUsed||0, limit = u.analysesLimit||5, tier = u.userTier||'free';
   if(tier==='free' && used>=limit){
     toast('You\'ve used all ' + limit + ' free analyses this month. Upgrade to continue.', 6000);
     setTimeout(()=>window.location.href='dashboard.html', 2000);

@@ -85,9 +85,8 @@
 .step h3{font-size:1.05rem;font-weight:700;margin-bottom:0.6rem;color:var(--ink)}
 .step p{font-size:0.875rem;color:var(--slate);line-height:1.65}
 
-/* PRICING 4-col */
+/* PRICING */
 .price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3.5rem;align-items:start}
-.price-grid-4{grid-template-columns:repeat(4,1fr)}
 .price-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-xl);padding:2.25rem;position:relative}
 .price-card.hot{border-color:var(--green);box-shadow:0 0 0 4px rgba(0,200,150,0.07),var(--sh)}
 .price-hot-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-family:var(--font-m);font-size:0.65rem;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;padding:0.3rem 1rem;border-radius:999px;white-space:nowrap}
@@ -99,20 +98,6 @@
 .price-features{list-style:none;display:flex;flex-direction:column;gap:0.65rem;margin-bottom:2rem}
 .price-features li{font-size:0.875rem;color:var(--ink-2);display:flex;align-items:flex-start;gap:0.5rem;line-height:1.5}
 .price-features li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:0.05rem}
-
-/* Optimizer addon strip */
-.price-addon{display:flex;align-items:center;justify-content:space-between;gap:2rem;margin-top:2rem;background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-xl);padding:1.75rem 2rem;flex-wrap:wrap}
-.price-addon-left{display:flex;align-items:flex-start;gap:1rem;flex:1;min-width:260px}
-.price-addon-icon{font-size:1.5rem;flex-shrink:0;margin-top:2px}
-.price-addon-left strong{font-size:1rem;font-weight:700;color:var(--ink);display:block;margin-bottom:0.3rem}
-.price-addon-left p{font-size:0.875rem;color:var(--slate);line-height:1.6}
-.price-addon-right{display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;flex-shrink:0}
-.price-addon-price{font-family:var(--font-d);font-size:2rem;font-weight:800;color:var(--ink);line-height:1}
-.price-addon-price span{font-family:var(--font-b);font-size:0.85rem;font-weight:400;color:var(--slate)}
-.price-addon-note{font-size:0.75rem;color:var(--green);font-weight:600}
-
-@media(max-width:1100px){.price-grid-4{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.price-grid-4{grid-template-columns:1fr}.price-addon{flex-direction:column}.price-addon-right{align-items:flex-start}}
 
 /* FAQ */
 .faq-wrap{max-width:740px;margin-top:3.5rem}
@@ -315,19 +300,16 @@
   <div class="sec-in">
     <span class="sec-lbl">Pricing</span>
     <h2 class="sec-h2">Simple, honest pricing</h2>
-    <p class="sec-sub">Start free. Upgrade when you're ready. Cancel anytime.</p>
-    <div class="price-grid price-grid-4">
-
-      <!-- FREE -->
+    <p class="sec-sub">Start completely free. Upgrade once when you need more. No monthly fees, ever.</p>
+    <div class="price-grid">
       <div class="price-card reveal">
         <p class="price-name">Free</p>
-        <p class="price-tagline">Try it out. See your score before spending a cent.</p>
+        <p class="price-tagline">Try it. See if it actually works for you before spending a cent.</p>
         <div class="price-amount">$0</div>
         <p class="price-period">&nbsp;</p>
         <p class="price-note">No credit card required</p>
         <ul class="price-features">
-          <li>5 analyses per month</li>
-          <li>1 resume optimization</li>
+          <li>2 full analyses per month</li>
           <li>All 9 scoring factors</li>
           <li>All 4 ATS platform scores</li>
           <li>Keyword gap analysis</li>
@@ -335,82 +317,40 @@
         </ul>
         <a href="auth.html" class="btn btn-ol btn-fw">Get Started Free</a>
       </div>
-
-      <!-- JOB SEEKER -->
-      <div class="price-card hot reveal d1">
+      <div class="price-card hot reveal">
         <div class="price-hot-badge">Most Popular</div>
-        <p class="price-name">Job Seeker</p>
-        <p class="price-tagline">For active applicants targeting multiple roles at once.</p>
-        <div class="price-amount">$14</div>
-        <p class="price-period">per month</p>
-        <p class="price-note">Resets on the 1st of every month</p>
+        <p class="price-name">Analysis Pro</p>
+        <p class="price-tagline">For active job seekers who apply to multiple roles at once.</p>
+        <div class="price-amount">$20</div>
+        <p class="price-period">one-time payment</p>
+        <p class="price-note">Monthly limits reset automatically, forever</p>
         <ul class="price-features">
-          <li><strong>120 analyses per month</strong></li>
-          <li><strong>5 resume optimizations</strong></li>
-          <li>Extra optimizations at $2 each</li>
-          <li>Download optimized DOCX</li>
-          <li>Full analysis history</li>
+          <li><strong>50 analyses per month</strong></li>
+          <li>Everything in Free</li>
+          <li>Analysis history saved</li>
+          <li>Priority AI processing</li>
+          <li>Export PDF reports</li>
           <li>Email support</li>
         </ul>
-        <button class="btn btn-g btn-fw" onclick="alert('Payment coming soon! Sign up free to be notified.')">Get Job Seeker</button>
+        <button class="btn btn-g btn-fw" onclick="alert('Payment coming soon! Sign up free to be notified.')">Buy for $20</button>
       </div>
-
-      <!-- UNLIMITED -->
-      <div class="price-card reveal d2">
-        <p class="price-name">Unlimited</p>
-        <p class="price-tagline">For students applying at full speed — no limits slowing you down.</p>
-        <div class="price-amount">$29</div>
-        <p class="price-period">per month</p>
-        <p class="price-note">Up to 30 analyses per day</p>
+      <div class="price-card reveal delay-1">
+        <p class="price-name">Optimize</p>
+        <p class="price-tagline">AI rewrites your resume to perfectly match any job description.</p>
+        <div class="price-amount">$30</div>
+        <p class="price-period">one-time payment</p>
+        <p class="price-note">Monthly limits reset automatically, forever</p>
         <ul class="price-features">
-          <li><strong>500 analyses per month</strong></li>
-          <li><strong>15 resume optimizations</strong></li>
-          <li>Extra optimizations at $2 each</li>
-          <li>Download optimized DOCX</li>
-          <li>Full analysis history</li>
-          <li>Priority AI processing</li>
+          <li><strong>Everything in Analysis Pro</strong></li>
+          <li><strong>25 AI rewrites per month</strong></li>
+          <li>Download tailored DOCX</li>
+          <li>Auto-tailor to each job</li>
+          <li>ATS-guaranteed formatting</li>
           <li>Priority support</li>
         </ul>
-        <button class="btn btn-ol btn-fw" onclick="alert('Payment coming soon! Sign up free to be notified.')">Get Unlimited</button>
-      </div>
-
-      <!-- RECRUITER -->
-      <div class="price-card reveal d3">
-        <p class="price-name">Recruiter</p>
-        <p class="price-tagline">For C2C recruiters and staffing agencies marketing candidates to clients.</p>
-        <div class="price-amount">$79</div>
-        <p class="price-period">per month</p>
-        <p class="price-note">Resets on the 1st of every month</p>
-        <ul class="price-features">
-          <li><strong>1,000 analyses per month</strong></li>
-          <li><strong>50 resume optimizations</strong></li>
-          <li>Extra optimizations at $1.50 each</li>
-          <li>Bulk resume scoring</li>
-          <li>CSV export of scores</li>
-          <li>3 team seats included</li>
-          <li>API access</li>
-          <li>Priority support</li>
-        </ul>
-        <button class="btn btn-ol btn-fw" onclick="alert('Contact us at hello@matchmyjobs.com')">Contact Us</button>
-      </div>
-
-    </div>
-
-    <!-- Optimizer callout -->
-    <div class="price-addon reveal">
-      <div class="price-addon-left">
-        <span class="price-addon-icon">✨</span>
-        <div>
-          <strong>Resume Optimizer</strong>
-          <p>Don't have time to fix it yourself? One click rewrites your resume to score 80+ against any job description and returns a ready-to-submit DOCX.</p>
-        </div>
-      </div>
-      <div class="price-addon-right">
-        <span class="price-addon-price">$2 <span>per resume</span></span>
-        <span class="price-addon-note">Included credits in every paid plan</span>
+        <button class="btn btn-ol btn-fw" onclick="alert('Payment coming soon! Sign up free to be notified.')">Buy for $30</button>
       </div>
     </div>
-
   </div>
 </section>
 

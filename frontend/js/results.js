@@ -748,7 +748,7 @@ function showOptimizeResult(result) {
           ${result.target_reached
             ? '✅ Your resume now scores <strong>80%+</strong> — ATS ready!'
             : improved
-              ? `📈 Improved by <strong>${result.improvement}%</strong>. Apply the AI suggestions to push further.`
+              ? `📈 Improved by <strong>${result.improvement}%</strong>. Download your optimized resume below.`
               : '⚠️ Score unchanged — your resume may already be well-optimised or needs manual skill additions.'}
         </p>
       </div>

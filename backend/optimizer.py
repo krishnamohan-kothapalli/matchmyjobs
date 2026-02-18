@@ -265,7 +265,7 @@ def optimize_resume(resume_text, jd_text, extraction, original_score,
         lines = text.split('\n')
         return {str(i): line for i, line in enumerate(lines) if line.strip()}
 
-    while best_score < 80 and iterations < 2:
+    while best_score < 80 and iterations < 3:
         iterations += 1
         logger.info("Optimizer pass %d — score %.1f", iterations, best_score)
 

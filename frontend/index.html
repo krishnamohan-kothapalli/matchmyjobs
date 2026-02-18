@@ -110,12 +110,12 @@
 .faq-item.open .faq-body{max-height:400px}
 
 /* CTA BANNER */
-.cta-band{background:linear-gradient(135deg,var(--ink) 0%,var(--ink-2) 100%);padding:5rem 1.5rem;text-align:center;position:relative;overflow:hidden}
+.cta-band{background:var(--bg);padding:5rem 1.5rem;text-align:center;position:relative;overflow:hidden;border-top:1px solid var(--border)}
 .cta-band::before{content:'';position:absolute;top:-40%;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(0,200,150,0.08) 0%,transparent 65%)}
 .cta-band-in{position:relative;z-index:1;max-width:640px;margin:0 auto}
-.cta-h{font-family:var(--font-d);font-size:clamp(2rem,5vw,3.25rem);font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.025em;margin-bottom:1rem}
+.cta-h{font-family:var(--font-d);font-size:clamp(2rem,5vw,3.25rem);font-weight:800;color:var(--ink);line-height:1.1;letter-spacing:-0.025em;margin-bottom:1rem}
 .cta-h em{color:var(--green);font-style:italic}
-.cta-p{color:rgba(255,255,255,0.4);font-size:1rem;margin-bottom:2.5rem;font-weight:300}
+.cta-p{color:var(--slate);font-size:1rem;margin-bottom:2.5rem;font-weight:300}
 
 /* FOOTER */
 .footer{background:var(--ink);padding:4rem 1.5rem 2rem;border-top:1px solid rgba(255,255,255,0.04)}
@@ -177,7 +177,6 @@
       <p class="hero-p">75% of resumes are filtered out before a human ever reads them. We score your resume against real ATS algorithms and show you exactly what to fix — in under 30 seconds.</p>
       <div class="hero-cta">
         <a href="auth.html" class="btn btn-g btn-gl">Analyze My Resume Free <svg width="18" height="18" fill="none" viewBox="0 0 20 20"><path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></a>
-        <a href="#how" class="btn btn-ghost-dark">See How It Works</a>
       </div>
       <p class="hero-hint">2 free analyses · No credit card · Results in 30 seconds</p>
       <div class="hero-stats">
@@ -428,7 +427,7 @@ const API='https://matchmyjobs.onrender.com';
   const r=document.getElementById('nav-right');
   r.innerHTML=e
     ?`<a href="analysis.html" class="btn-ng">Analyze</a><a href="dashboard.html" class="btn-ngg">Dashboard</a>`
-    :`<a href="auth.html" class="btn-ng">Sign In</a><a href="auth.html" class="btn-ngg">Get Started Free</a>`;
+    :`<a href="auth.html" class="btn-ng">Sign In</a>`;
 })();
 function toggleNav(){document.getElementById('navlinks').classList.toggle('open')}
 document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>document.getElementById('navlinks').classList.remove('open')));

@@ -406,7 +406,9 @@ async function startAnalysis(){
       localStorage.setItem('usageData',JSON.stringify(ud));
     }
 
-    localStorage.setItem('auditResults',JSON.stringify(data));
+    localStorage.setItem('auditResults', JSON.stringify(data));
+    localStorage.setItem('resumeText', resumeText);
+    localStorage.setItem('jdText', jdText);
     await sleep(600);
     window.location.href='audit.html';
 

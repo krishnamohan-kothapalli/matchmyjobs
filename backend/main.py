@@ -1,14 +1,17 @@
 from dotenv import load_dotenv
-load_dotenv()  # must be first — loads .env before engine imports read ANTHROPIC_API_KEY
+load_dotenv()
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
 import logging
 import os
 from models import AnalysisRequest
 from engine import nlp, run_analysis
 from auth_google import router as google_auth_router
+from optimizer import optimize_resume
 
 # ---------------------------------------------------------------------------
 # Database imports — fail-safe so backend runs even if DB not configured
@@ -149,3 +152,77 @@ async def get_score(request: AnalysisRequest, db: Session = Depends(get_db)):
     except Exception as exc:
         logger.error("Analysis failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal analysis engine error. Please try again.")
+
+
+# ── Optimize endpoint ────────────────────────────────────────────────────────
+
+class OptimizeRequest(BaseModel):
+    resume_text:    str
+    jd_text:        str
+    original_score: float
+    email:          Optional[str] = None
+
+
+@app.post("/optimize")
+async def optimize(request: OptimizeRequest, db: Session = Depends(get_db)):
+
+    if not request.resume_text.strip() or not request.jd_text.strip():
+        raise HTTPException(status_code=400, detail="Resume and job description are required.")
+    if len(request.resume_text) < 100:
+        raise HTTPException(status_code=400, detail="Resume is too short.")
+
+    # ── Check optimization credits ──────────────────────────────────────────
+    if request.email and DB_AVAILABLE:
+        user = get_user_by_email(db, request.email)
+        if user:
+            from database import get_current_month_usage, TIER_LIMITS
+            usage = get_current_month_usage(db, user.id)
+            tier_config = TIER_LIMITS.get(user.tier, {"analyses": 5, "optimizations": 1})
+            opt_limit   = tier_config.get("optimizations", 1)
+
+            if usage.optimizations_count >= opt_limit:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Optimization limit reached ({usage.optimizations_count}/{opt_limit} this month). Upgrade your plan to continue."
+                )
+
+    # ── Run extraction first to get skill context ───────────────────────────
+    try:
+        from engine.ai_parser import extract_all
+        extraction = extract_all(request.resume_text, request.jd_text)
+    except Exception as e:
+        logger.warning("Extraction failed for optimizer, using empty: %s", e)
+        extraction = {"missing_skills": [], "matched_skills": [], "jd_responsibilities": [], "job_title": "target role"}
+
+    # ── Run optimizer ───────────────────────────────────────────────────────
+    try:
+        result = optimize_resume(
+            resume_text=request.resume_text,
+            jd_text=request.jd_text,
+            extraction=extraction,
+            original_score=request.original_score,
+            run_analysis_fn=run_analysis,
+            nlp=nlp,
+        )
+    except Exception as exc:
+        logger.error("Optimization failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Optimization failed. Please try again.")
+
+    # ── Increment optimization count ────────────────────────────────────────
+    if request.email and DB_AVAILABLE:
+        user = get_user_by_email(db, request.email)
+        if user:
+            from database import get_current_month_usage
+            usage = get_current_month_usage(db, user.id)
+            usage.optimizations_count += 1
+            db.commit()
+            result["optimizations_used"]  = usage.optimizations_count
+            result["optimizations_limit"] = opt_limit
+
+    logger.info(
+        "Optimization complete — %.1f → %.1f (%d passes), user: %s",
+        request.original_score, result["new_score"],
+        result["iterations"], request.email or "anonymous"
+    )
+
+    return result

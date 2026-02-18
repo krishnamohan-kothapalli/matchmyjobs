@@ -606,100 +606,205 @@ function renderDensityChart(density) {
 }
 
 // ── Optimize Resume (Feature Lock) ────────────────────────
-window.optimizeResume = function() {
-  // Show feature lock modal
-  showFeatureLockModal();
-  
-  trackEvent('Optimize Resume Clicked', {
-    score: Math.round(JSON.parse(localStorage.getItem('auditResults') || '{}').score || 0)
-  });
+window.optimizeResume = async function() {
+  const data        = JSON.parse(localStorage.getItem('auditResults') || '{}');
+  const resumeText  = localStorage.getItem('resumeText') || '';
+  const jdText      = localStorage.getItem('jdText') || '';
+  const email       = localStorage.getItem('userEmail') || '';
+  const usage       = JSON.parse(localStorage.getItem('usageData') || '{}');
+  const score       = Math.round(data.score || 0);
+
+  // Guard: need resume+JD text
+  if (!resumeText || !jdText) {
+    showOptimizeError('Resume or job description text not found. Please run a new analysis first.');
+    return;
+  }
+
+  // Guard: check optimization credits
+  const tier      = usage.userTier || 'free';
+  const optUsed   = usage.optimizationsUsed  || 0;
+  const optLimits = { free: 1, job_seeker: 5, unlimited: 15, recruiter: 50 };
+  const optLimit  = optLimits[tier] || 1;
+
+  if (optUsed >= optLimit) {
+    showOptimizeError(
+      `You've used all ${optLimit} optimization${optLimit > 1 ? 's' : ''} for this month. ` +
+      `<a href="index.html#pricing" style="color:var(--green);font-weight:600">Upgrade your plan</a> to get more.`
+    );
+    return;
+  }
+
+  // Show loading overlay
+  showOptimizeLoading(score);
+
+  try {
+    const API = window.API_BASE || 'https://matchmyjobs.onrender.com';
+    const res = await fetch(`${API}/optimize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resume_text:    resumeText,
+        jd_text:        jdText,
+        original_score: score,
+        email:          email || null,
+      })
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.detail || 'Optimization failed');
+    }
+
+    // Update optimization count in localStorage
+    if (result.optimizations_used !== undefined) {
+      usage.optimizationsUsed  = result.optimizations_used;
+      usage.optimizationsLimit = result.optimizations_limit;
+      localStorage.setItem('usageData', JSON.stringify(usage));
+    } else {
+      usage.optimizationsUsed = (usage.optimizationsUsed || 0) + 1;
+      localStorage.setItem('usageData', JSON.stringify(usage));
+    }
+
+    // Hide loading, show results
+    hideOptimizeLoading();
+    showOptimizeResult(result);
+
+  } catch (err) {
+    hideOptimizeLoading();
+    showOptimizeError(err.message || 'Optimization failed. Please try again.');
+  }
+
+  trackEvent('Optimize Resume Clicked', { score });
 };
 
-function showFeatureLockModal() {
-  // Create modal overlay
-  const modal = document.createElement('div');
-  modal.className = 'feature-lock-modal';
-  modal.innerHTML = `
-    <div class="feature-lock-overlay" onclick="this.parentElement.remove()"></div>
-    <div class="feature-lock-content">
-      <div class="feature-lock-icon">🔒</div>
-      <h2>Optimize & Download Resume</h2>
-      <p class="feature-lock-description">
-        Upgrade to <strong>Pro</strong> to unlock AI-powered resume optimization and download.
-      </p>
-      
-      <div class="feature-lock-benefits">
-        <div class="benefit-item">
-          <div class="benefit-icon">✨</div>
-          <div class="benefit-text">
-            <strong>Auto-Optimize Resume</strong>
-            <p>AI rewrites your resume to match the job description perfectly</p>
-          </div>
-        </div>
-        <div class="benefit-item">
-          <div class="benefit-icon">📄</div>
-          <div class="benefit-text">
-            <strong>Download DOCX</strong>
-            <p>Get your optimized resume as an editable Word document</p>
-          </div>
-        </div>
-        <div class="benefit-item">
-          <div class="benefit-icon">🎯</div>
-          <div class="benefit-text">
-            <strong>ATS-Optimized</strong>
-            <p>Guaranteed to pass all 6 major ATS platforms</p>
-          </div>
-        </div>
+function showOptimizeLoading(originalScore) {
+  const el = document.createElement('div');
+  el.id = 'optimize-overlay';
+  el.className = 'optimize-overlay';
+  el.innerHTML = `
+    <div class="optimize-panel">
+      <div class="optimize-spinner"></div>
+      <h2 class="optimize-title">Optimizing Your Resume</h2>
+      <p class="optimize-sub">AI is rewriting your resume to target 80%+ score…</p>
+      <div class="optimize-steps">
+        <div class="opt-step active" id="opt-s1">⚡ Analysing skill gaps</div>
+        <div class="opt-step" id="opt-s2">✏️ Rewriting content</div>
+        <div class="opt-step" id="opt-s3">📊 Scoring the rewrite</div>
+        <div class="opt-step" id="opt-s4">📄 Generating DOCX</div>
       </div>
-      
-      <div class="feature-lock-pricing">
-        <div class="price-tag">
-          <span class="price-amount">$10</span>
-          <span class="price-period">lifetime access</span>
-        </div>
-        <ul class="price-features">
-          <li>✓ Unlimited optimizations</li>
-          <li>✓ All Pro features</li>
-          <li>✓ Priority support</li>
-        </ul>
-      </div>
-      
-      <div class="feature-lock-actions">
-        <button class="btn-primary btn-large" onclick="window.location.href='index.html#pricing'">
-          Upgrade to Pro
-        </button>
-        <button class="btn-secondary" onclick="this.closest('.feature-lock-modal').remove()">
-          Maybe Later
-        </button>
-      </div>
-      
-      <button class="feature-lock-close" onclick="this.closest('.feature-lock-modal').remove()" aria-label="Close">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6L6 18M6 6l12 12"/>
-        </svg>
-      </button>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
+    </div>`;
+  document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
-  
-  // Remove modal when overlay clicked
-  modal.querySelector('.feature-lock-overlay').addEventListener('click', () => {
-    modal.remove();
-    document.body.style.overflow = '';
-  });
-  
-  // Remove modal when escape pressed
-  const handleEscape = (e) => {
-    if (e.key === 'Escape') {
-      modal.remove();
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', handleEscape);
-    }
-  };
-  document.addEventListener('keydown', handleEscape);
+
+  // Animate steps
+  let i = 1;
+  const timer = setInterval(() => {
+    if (i > 0) document.getElementById(`opt-s${i}`)?.classList.remove('active');
+    i++;
+    if (i <= 4) document.getElementById(`opt-s${i}`)?.classList.add('active');
+    else clearInterval(timer);
+  }, 2800);
+  el._timer = timer;
 }
+
+function hideOptimizeLoading() {
+  const el = document.getElementById('optimize-overlay');
+  if (el) { clearInterval(el._timer); el.remove(); }
+  document.body.style.overflow = '';
+}
+
+function showOptimizeResult(result) {
+  const improved = result.new_score > result.original_score;
+  const el = document.createElement('div');
+  el.id = 'optimize-result-overlay';
+  el.className = 'optimize-overlay';
+  el.innerHTML = `
+    <div class="optimize-panel optimize-result-panel">
+      <button class="optimize-close" onclick="document.getElementById('optimize-result-overlay').remove();document.body.style.overflow=''">✕</button>
+      <div class="opt-result-header">
+        <div class="opt-score-compare">
+          <div class="opt-score-box opt-score-before">
+            <span class="opt-score-label">Before</span>
+            <span class="opt-score-num">${result.original_score}%</span>
+          </div>
+          <div class="opt-score-arrow">${improved ? '→' : '↔'}</div>
+          <div class="opt-score-box opt-score-after ${result.new_score >= 80 ? 'green' : 'amber'}">
+            <span class="opt-score-label">After</span>
+            <span class="opt-score-num">${result.new_score}%</span>
+          </div>
+        </div>
+        <p class="opt-result-msg">
+          ${result.target_reached
+            ? '✅ Your resume now scores <strong>80%+</strong> — ATS ready!'
+            : improved
+              ? `📈 Improved by <strong>${result.improvement}%</strong>. Apply the AI suggestions to push further.`
+              : '⚠️ Score unchanged — your resume may already be well-optimised or needs manual skill additions.'}
+        </p>
+      </div>
+
+      <div class="opt-text-preview">
+        <div class="opt-preview-label">Optimized Resume Preview</div>
+        <pre class="opt-preview-text" id="opt-preview">${sanitizeHTML(result.optimized_text || '')}</pre>
+      </div>
+
+      <div class="opt-actions">
+        ${result.docx_b64 ? `
+        <button class="btn-primary btn-large" onclick="downloadDocx()">
+          📥 Download Optimized DOCX
+        </button>` : ''}
+        <button class="btn-secondary" onclick="copyOptimizedText()">
+          📋 Copy Text
+        </button>
+        <button class="btn-secondary" onclick="document.getElementById('optimize-result-overlay').remove();document.body.style.overflow=''">
+          Close
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+
+  // Store for download
+  if (result.docx_b64) window._optimizeDocx = result.docx_b64;
+  window._optimizeText = result.optimized_text;
+}
+
+function showOptimizeError(msg) {
+  const el = document.createElement('div');
+  el.className = 'optimize-overlay';
+  el.innerHTML = `
+    <div class="optimize-panel" style="text-align:center;gap:16px">
+      <div style="font-size:2.5rem">⚠️</div>
+      <h2 class="optimize-title">Could not optimize</h2>
+      <p class="optimize-sub">${msg}</p>
+      <button class="btn-secondary" onclick="this.closest('.optimize-overlay').remove();document.body.style.overflow=''">Close</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+}
+
+window.downloadDocx = function() {
+  if (!window._optimizeDocx) return;
+  const bytes  = atob(window._optimizeDocx);
+  const arr    = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob   = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement('a');
+  a.href       = url;
+  a.download   = 'optimized_resume.docx';
+  a.click();
+  URL.revokeObjectURL(url);
+  trackEvent('Optimized Resume Downloaded');
+};
+
+window.copyOptimizedText = function() {
+  if (!window._optimizeText) return;
+  navigator.clipboard.writeText(window._optimizeText).then(() => {
+    const btn = document.querySelector('.opt-actions .btn-secondary');
+    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy Text'; }, 2000); }
+  });
+};
 
 // ── Share Results ──────────────────────────────────────────
 window.shareResults = async function() {

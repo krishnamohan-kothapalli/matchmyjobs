@@ -794,18 +794,33 @@ function showOptimizeError(msg) {
 }
 
 window.downloadDocx = function() {
-  if (!window._optimizeDocx) return;
-  const bytes  = atob(window._optimizeDocx);
-  const arr    = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  const blob   = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-  const url    = URL.createObjectURL(blob);
-  const a      = document.createElement('a');
-  a.href       = url;
-  a.download   = 'optimized_resume.docx';
-  a.click();
-  URL.revokeObjectURL(url);
-  trackEvent('Optimized Resume Downloaded');
+  const b64 = window._optimizeDocx;
+  if (!b64) { console.error('No DOCX data available'); return; }
+  try {
+    const bytes = atob(b64);
+    const arr   = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob  = new Blob([arr], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = 'optimized_resume.docx';
+    // Must be in DOM for Firefox compatibility
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    // Clean up after short delay
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
+    trackEvent('Optimized Resume Downloaded');
+  } catch (err) {
+    console.error('Download failed:', err);
+    alert('Download failed. Please try copying the text instead.');
+  }
 };
 
 window.copyOptimizedText = function() {

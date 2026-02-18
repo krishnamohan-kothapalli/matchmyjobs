@@ -1,21 +1,5 @@
 # optimizer.py
-# ═══════════════════════════════════════════════════════════════════════════
-# Resume Optimizer — rewrites resume to score 80+ against a JD
-#
-# Flow:
-#   1. Claude rewrites resume using extraction data + JD context
-#   2. Score the rewrite with the same engine
-#   3. If score < 80 and attempts < 2, do one more pass
-#   4. Generate DOCX from final text
-#   5. Return optimized text + new score + DOCX as base64
-# ═══════════════════════════════════════════════════════════════════════════
-
-import os
-import re
-import json
-import base64
-import logging
-import tempfile
+import os, re, base64, logging, tempfile
 from anthropic import Anthropic
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
@@ -24,32 +8,23 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 logger = logging.getLogger(__name__)
-
 _client = None
 _MODEL  = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 
-
-def _get_client() -> Anthropic:
+def _get_client():
     global _client
     if _client is None:
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY not set")
-        _client = Anthropic(api_key=api_key)
+        _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     return _client
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# REWRITE PROMPT
-# ─────────────────────────────────────────────────────────────────────────────
-
-_REWRITE_PROMPT = """You are an expert resume writer. Rewrite the candidate's resume to maximize ATS score for the target job.
+# ── Rewrite prompt ────────────────────────────────────────────────────────────
+_REWRITE_PROMPT = """You are editing a resume to improve its ATS keyword score for a specific job. Your job is surgical — add missing keywords naturally, not rewrite the person's story.
 
 TARGET JOB: {job_title}
-MISSING SKILLS TO ADD: {missing_skills}
-MATCHED SKILLS TO EMPHASIZE: {matched_skills}
-JD RESPONSIBILITIES: {responsibilities}
-CURRENT SCORE: {current_score}/100 — target is 80+
+MISSING KEYWORDS TO WEAVE IN: {missing_skills}
+KEYWORDS TO EMPHASIZE: {matched_skills}
+KEY JD PHRASES: {responsibilities}
+CURRENT SCORE: {current_score}% — target 80%+
 
 ORIGINAL RESUME:
 {resume_text}
@@ -57,268 +32,221 @@ ORIGINAL RESUME:
 JOB DESCRIPTION:
 {jd_text}
 
-REWRITE RULES:
-1. Preserve ALL real experience, dates, companies, education — never fabricate
-2. Add missing skills ONLY where they genuinely fit the candidate's background
-3. Use EXACT JD terminology — if JD says "CI/CD pipelines" use that exact phrase
-4. Move key skills into Summary and first bullet of each role (ATS weights these 3x)
-5. Rewrite weak bullets to include metrics where context allows
-6. Add a Skills section if missing, listing all matched + addable missing skills
-7. Keep the same overall structure and length — do not add fictional jobs
-8. Preserve the candidate's voice — no robotic corporate-speak
+EDITING RULES — follow strictly:
 
-Return ONLY the rewritten resume text, no commentary, no markdown headers, no explanation.
-Start directly with the candidate's name."""
+CONTENT:
+1. Never change dates, company names, job titles, education — these are facts
+2. Never add experience the person does not have
+3. Add missing keywords by weaving them into existing bullets where they genuinely fit
+4. If a skill truly cannot fit anywhere naturally, add it only to a Skills section
+5. Reorder bullets within a role so the most JD-relevant ones come first
+6. Add or expand a Skills section with relevant keywords
 
+VOICE — critical for passing AI detection:
+7. Keep the candidate's exact writing style and sentence length
+8. Keep their verb choices — if they wrote "built" do not change to "architected"
+9. Keep their formality level exactly
+10. BANNED words (AI red flags): spearheaded, orchestrated, leveraged, robust, dynamic, synergistic, cross-functional, best-in-class, cutting-edge, revolutionized, transformative, holistic, streamlined (unless they used it), catalyzed, paradigm
+11. Do not inflate impact — if they wrote "helped build" do not change to "led development of"
+12. Do not change passive voice to active if the original used passive
 
-def rewrite_resume(
-    resume_text:  str,
-    jd_text:      str,
-    extraction:   dict,
-    current_score: float,
-) -> str:
-    """Call Claude to rewrite the resume for better ATS match."""
-    client = _get_client()
+FORMAT:
+13. Keep exact same section order as original
+14. Keep same number of bullets per role (plus or minus one maximum)
+15. Output plain text only — no markdown, no asterisks, no hash headers
+16. Use the exact section heading words from the original (e.g. if they wrote "WORK HISTORY" keep that)
+17. Use bullet character: •
 
+Return ONLY the edited resume. Start with the candidate's name. No commentary."""
+
+def rewrite_resume(resume_text, jd_text, extraction, current_score):
     missing  = ", ".join(extraction.get("missing_skills", [])[:15]) or "none"
     matched  = ", ".join(extraction.get("matched_skills", [])[:10]) or "none"
-    resp_str = "; ".join(extraction.get("jd_responsibilities", [])[:5]) or "none"
+    resp_str = "; ".join(extraction.get("jd_responsibilities", [])[:5]) or "see JD"
     title    = extraction.get("job_title", "target role")
 
-    # Smart truncate
-    def _trunc(t, n=4000):
-        return t if len(t) <= n else t[:int(n*0.7)] + "\n...\n" + t[-int(n*0.2):]
+    def trunc(t, n):
+        return t if len(t) <= n else t[:int(n*.72)] + "\n[...]\n" + t[-int(n*.18):]
 
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=4000,
-        messages=[{
-            "role": "user",
-            "content": _REWRITE_PROMPT.format(
-                job_title=title,
-                missing_skills=missing,
-                matched_skills=matched,
-                responsibilities=resp_str,
-                current_score=round(current_score),
-                resume_text=_trunc(resume_text, 4000),
-                jd_text=_trunc(jd_text, 2500),
-            )
-        }]
+    resp = _get_client().messages.create(
+        model=_MODEL, max_tokens=4000,
+        messages=[{"role": "user", "content": _REWRITE_PROMPT.format(
+            job_title=title, missing_skills=missing, matched_skills=matched,
+            responsibilities=resp_str, current_score=round(current_score),
+            resume_text=trunc(resume_text, 4000), jd_text=trunc(jd_text, 2000),
+        )}]
     )
-    return response.content[0].text.strip()
+    return resp.content[0].text.strip()
 
+# ── DOCX generation ───────────────────────────────────────────────────────────
+_SECTION_WORDS = {
+    'experience','work experience','professional experience','employment','work history','career history',
+    'education','academic background','qualifications',
+    'skills','technical skills','core competencies','competencies',
+    'summary','professional summary','profile','objective','career objective','career summary','about me',
+    'certifications','certificates','licenses',
+    'projects','key projects','selected projects',
+    'achievements','accomplishments','awards','honors',
+    'publications','research','presentations',
+    'volunteer','volunteering','community',
+    'languages','interests','hobbies','activities',
+    'references','contact','contact information',
+}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DOCX GENERATION
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _add_horizontal_rule(doc):
-    """Add a thin green horizontal line."""
-    p = doc.add_paragraph()
-    pPr = p._p.get_or_add_pPr()
-    pBdr = OxmlElement('w:pBdr')
-    bottom = OxmlElement('w:bottom')
-    bottom.set(qn('w:val'), 'single')
-    bottom.set(qn('w:sz'), '6')
-    bottom.set(qn('w:space'), '1')
-    bottom.set(qn('w:color'), '00C896')
-    pBdr.append(bottom)
-    pPr.append(pBdr)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after  = Pt(4)
-    return p
-
-
-def _set_font(run, bold=False, size=11, color=None):
-    run.font.name = 'Calibri'
-    run.font.size = Pt(size)
-    run.font.bold = bold
-    if color:
-        run.font.color.rgb = RGBColor(*color)
-
-
-def _is_section_heading(line: str) -> bool:
-    """Detect common resume section headings."""
-    headings = {
-        'experience', 'work experience', 'professional experience',
-        'education', 'skills', 'technical skills', 'summary',
-        'professional summary', 'objective', 'certifications',
-        'projects', 'achievements', 'awards', 'publications',
-        'volunteer', 'languages', 'interests', 'references',
-        'contact', 'profile',
-    }
+def _is_section(line):
     clean = line.strip().rstrip(':').lower()
-    return clean in headings or (len(clean) < 40 and clean.upper() == line.strip().rstrip(':'))
+    if clean in _SECTION_WORDS: return True
+    s = line.strip().rstrip(':')
+    return s.isupper() and 4 <= len(s) <= 35 and not re.search(r'\b(20\d\d|19\d\d)\b', s)
 
+def _is_bullet(line):
+    return bool(re.match(r'^[•\-\*·▪►▸‣]\s+', line.strip()))
 
-def _is_bullet(line: str) -> bool:
-    return bool(re.match(r'^[\•\-\*\·▪►]\s+', line.strip()))
+def _is_contact(line):
+    l = line.lower()
+    return bool(
+        re.search(r'@\w+\.\w+', l) or
+        re.search(r'\b\d{3}[\s.\-]\d{3}[\s.\-]\d{4}\b', l) or
+        re.search(r'linkedin\.com|github\.com|portfolio|http', l)
+    )
 
+def _is_job_header(line):
+    return bool(re.search(
+        r'\b(20\d\d|19\d\d|present|current|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b',
+        line.lower()
+    ))
 
-def generate_docx(resume_text: str, candidate_name: str = "") -> bytes:
-    """
-    Convert plain resume text to a clean, ATS-friendly DOCX.
-    Returns bytes of the DOCX file.
-    """
+def _rule(doc):
+    p = doc.add_paragraph()
+    pBdr = OxmlElement('w:pBdr')
+    bot  = OxmlElement('w:bottom')
+    bot.set(qn('w:val'),'single'); bot.set(qn('w:sz'),'4')
+    bot.set(qn('w:space'),'1');    bot.set(qn('w:color'),'1E3A2F')
+    pBdr.append(bot)
+    p._p.get_or_add_pPr().append(pBdr)
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after  = Pt(0)
+
+def _r(p, text, bold=False, size=11.0, color=None, italic=False):
+    run = p.add_run(text)
+    run.font.name = 'Calibri'; run.font.size = Pt(size)
+    run.font.bold = bold; run.font.italic = italic
+    if color: run.font.color.rgb = RGBColor(*color)
+
+def generate_docx(resume_text):
     doc = Document()
+    for sec in doc.sections:
+        sec.top_margin = sec.bottom_margin = Inches(0.75)
+        sec.left_margin = sec.right_margin = Inches(1.0)
+    n = doc.styles['Normal']
+    n.font.name = 'Calibri'; n.font.size = Pt(11)
+    n.paragraph_format.space_before = n.paragraph_format.space_after = Pt(0)
 
-    # Page margins — 0.75 inch all round
-    for section in doc.sections:
-        section.top_margin    = Inches(0.75)
-        section.bottom_margin = Inches(0.75)
-        section.left_margin   = Inches(0.85)
-        section.right_margin  = Inches(0.85)
+    lines        = resume_text.split('\n')
+    name_done    = False
+    contact_done = False
 
-    # Default paragraph spacing
-    from docx.oxml.ns import qn as _qn
-    style = doc.styles['Normal']
-    style.font.name = 'Calibri'
-    style.font.size = Pt(11)
+    for raw in lines:
+        line = raw.rstrip()
 
-    lines = resume_text.split('\n')
-    first_line = True
-
-    for raw_line in lines:
-        line = raw_line.rstrip()
-
-        # Blank line → small spacer
         if not line.strip():
-            p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(0)
-            p.paragraph_format.space_after  = Pt(3)
+            p = doc.add_paragraph(); p.paragraph_format.space_after = Pt(4)
             continue
 
-        # First non-blank line = candidate name
-        if first_line:
-            first_line = False
-            p   = doc.add_paragraph()
-            run = p.add_run(line.strip())
-            _set_font(run, bold=True, size=18, color=(0, 80, 60))
-            p.paragraph_format.space_after  = Pt(2)
-            p.paragraph_format.space_before = Pt(0)
+        # Name
+        if not name_done:
+            name_done = True
+            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _r(p, line.strip(), bold=True, size=16, color=(15,60,45))
+            p.paragraph_format.space_after = Pt(3)
             continue
+
+        # Contact block
+        if not contact_done and _is_contact(line):
+            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _r(p, line.strip(), size=10, color=(80,80,80))
+            p.paragraph_format.space_after = Pt(1)
+            continue
+
+        if not contact_done and not _is_contact(line):
+            contact_done = True
 
         # Section heading
-        if _is_section_heading(line):
-            _add_horizontal_rule(doc)
-            p   = doc.add_paragraph()
-            run = p.add_run(line.strip().upper())
-            _set_font(run, bold=True, size=11, color=(0, 100, 75))
-            p.paragraph_format.space_before = Pt(8)
-            p.paragraph_format.space_after  = Pt(2)
+        if _is_section(line):
+            p = doc.add_paragraph(); p.paragraph_format.space_after = Pt(4)
+            p = doc.add_paragraph()
+            _r(p, line.strip().upper(), bold=True, size=11, color=(15,60,45))
+            p.paragraph_format.space_before = Pt(0); p.paragraph_format.space_after = Pt(1)
+            _rule(doc)
             continue
 
-        # Bullet point
+        # Bullet
         if _is_bullet(line):
-            text = re.sub(r'^[\•\-\*\·▪►]\s+', '', line.strip())
-            p    = doc.add_paragraph(style='List Bullet')
-            run  = p.add_run(text)
-            _set_font(run, size=10.5)
+            text = re.sub(r'^[•\-\*·▪►▸‣]\s+', '', line.strip())
+            p = doc.add_paragraph(style='List Bullet')
+            _r(p, text, size=10.5)
+            p.paragraph_format.left_indent  = Inches(0.25)
             p.paragraph_format.space_before = Pt(1)
             p.paragraph_format.space_after  = Pt(1)
-            p.paragraph_format.left_indent  = Inches(0.2)
             continue
 
-        # Contact line (emails, phones, URLs — typically short, line 2-4)
-        if re.search(r'[@|•|linkedin|github|http|\d{3}[-.\s]\d{3}]', line.lower()) and len(line) < 120:
-            p   = doc.add_paragraph()
-            run = p.add_run(line.strip())
-            _set_font(run, size=10, color=(80, 80, 80))
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p.paragraph_format.space_before = Pt(0)
+        # Job header (company / title / dates)
+        if _is_job_header(line):
+            p = doc.add_paragraph()
+            _r(p, line.strip(), bold=True, size=11)
+            p.paragraph_format.space_before = Pt(7)
             p.paragraph_format.space_after  = Pt(1)
             continue
 
-        # Job title / company line (bold if ALL CAPS or ends with date pattern)
-        if re.search(r'\b(20\d\d|present|current)\b', line.lower()) or line.strip() == line.strip().upper():
-            p   = doc.add_paragraph()
-            run = p.add_run(line.strip())
-            _set_font(run, bold=True, size=11)
-            p.paragraph_format.space_before = Pt(6)
-            p.paragraph_format.space_after  = Pt(1)
-            continue
-
-        # Regular paragraph
-        p   = doc.add_paragraph()
-        run = p.add_run(line.strip())
-        _set_font(run, size=10.5)
+        # Regular line
+        p = doc.add_paragraph()
+        _r(p, line.strip(), size=10.5)
         p.paragraph_format.space_before = Pt(1)
         p.paragraph_format.space_after  = Pt(1)
 
-    # Save to bytes
     with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as tmp:
-        doc.save(tmp.name)
-        tmp_path = tmp.name
-
-    with open(tmp_path, 'rb') as f:
-        data = f.read()
-
-    os.unlink(tmp_path)
+        doc.save(tmp.name); path = tmp.name
+    with open(path,'rb') as f: data = f.read()
+    os.unlink(path)
     return data
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN OPTIMIZER FUNCTION
-# ─────────────────────────────────────────────────────────────────────────────
-
-def optimize_resume(
-    resume_text:   str,
-    jd_text:       str,
-    extraction:    dict,
-    original_score: float,
-    run_analysis_fn,   # pass scorer's run_analysis to avoid circular import
-    nlp,
-) -> dict:
-    """
-    Full optimization pipeline.
-    Returns dict with: optimized_text, new_score, docx_b64, iterations
-    """
+# ── Main optimizer ────────────────────────────────────────────────────────────
+def optimize_resume(resume_text, jd_text, extraction, original_score, run_analysis_fn, nlp):
     best_text  = resume_text
     best_score = original_score
     iterations = 0
-    MAX_ITER   = 2
 
-    while best_score < 80 and iterations < MAX_ITER:
+    while best_score < 80 and iterations < 2:
         iterations += 1
-        logger.info("Optimizer pass %d — current score: %.1f", iterations, best_score)
-
+        logger.info("Optimizer pass %d — score %.1f", iterations, best_score)
         try:
             rewritten = rewrite_resume(best_text, jd_text, extraction, best_score)
         except Exception as e:
-            logger.error("Rewrite failed on pass %d: %s", iterations, e)
-            break
-
-        # Score the rewrite
+            logger.error("Rewrite failed: %s", e); break
         try:
             result    = run_analysis_fn(rewritten, jd_text, nlp)
             new_score = result.get("score", best_score)
         except Exception as e:
-            logger.error("Scoring failed on pass %d: %s", iterations, e)
-            break
-
-        logger.info("Pass %d score: %.1f → %.1f", iterations, best_score, new_score)
-
+            logger.error("Scoring failed: %s", e); break
+        logger.info("Pass %d: %.1f → %.1f", iterations, best_score, new_score)
         if new_score > best_score:
-            best_score = new_score
-            best_text  = rewritten
+            best_score = new_score; best_text = rewritten
         else:
-            # No improvement — stop
             break
 
-    # Generate DOCX
+    docx_b64 = None
     try:
-        docx_bytes = generate_docx(best_text)
-        docx_b64   = base64.b64encode(docx_bytes).decode('utf-8')
+        docx_b64 = base64.b64encode(generate_docx(best_text)).decode('utf-8')
+        logger.info("DOCX generated OK")
     except Exception as e:
-        logger.error("DOCX generation failed: %s", e)
-        docx_b64 = None
+        logger.error("DOCX failed: %s", e, exc_info=True)
 
     return {
-        "optimized_text":  best_text,
-        "original_score":  round(original_score, 1),
-        "new_score":       round(best_score, 1),
-        "improvement":     round(best_score - original_score, 1),
-        "iterations":      iterations,
-        "docx_b64":        docx_b64,
-        "target_reached":  best_score >= 80,
+        "optimized_text": best_text,
+        "original_score": round(original_score, 1),
+        "new_score":      round(best_score, 1),
+        "improvement":    round(best_score - original_score, 1),
+        "iterations":     iterations,
+        "docx_b64":       docx_b64,
+        "target_reached": best_score >= 80,
     }

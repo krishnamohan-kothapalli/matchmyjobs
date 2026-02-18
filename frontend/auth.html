@@ -138,7 +138,7 @@ function saveSession(d){
   localStorage.setItem('authToken',d.token);
   localStorage.setItem('userEmail',d.email);
   localStorage.setItem('userName',d.name||d.email);
-  localStorage.setItem('usageData',JSON.stringify({analysesUsed:d.analysesUsed||0,analysesLimit:d.analysesLimit||2,userTier:d.tier||'free',lastUsed:new Date().toISOString()}));
+  localStorage.setItem('usageData',JSON.stringify({analysesUsed:d.analysesUsed||0,analysesLimit:d.analysesLimit||5,userTier:d.tier||'free',lastUsed:new Date().toISOString()}));
 }
 async function signIn(){
   hideErr();
@@ -177,7 +177,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=document.get
 (function(){
   const p=new URLSearchParams(location.search);
   if(p.has('token')){
-    saveSession({token:p.get('token'),email:p.get('email'),name:p.get('name'),tier:'free',analysesUsed:0,analysesLimit:2});
+    saveSession({
+      token:p.get('token'),
+      email:p.get('email'),
+      name:p.get('name'),
+      tier:p.get('tier')||'free',
+      analysesUsed:parseInt(p.get('analyses_used')||'0'),
+      analysesLimit:parseInt(p.get('analyses_limit')||'5')
+    });
     window.location.href='analysis.html';
   }
   if(p.has('error')) showErr('Google sign-in failed. Please try again.');

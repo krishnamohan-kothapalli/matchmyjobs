@@ -192,9 +192,23 @@ function renderSuggestions(suggestions, score) {
     if (!suggestions || !suggestions.length) return;
     const body = document.getElementById('suggestions-body');
     if (!body) return;
-    body.innerHTML = suggestions.map((s, i) => {
+
+    // Cap suggestions by score tier
+    const score = JSON.parse(localStorage.getItem('auditResults') || '{}').score || 0;
+    const maxSuggestions = score >= 80 ? 2 : score >= 55 ? 3 : 5;
+    const visible = suggestions.slice(0, maxSuggestions);
+
+    body.innerHTML = visible.map((s, i) => {
       const p = s.priority || 'medium';
       const hasOriginal = s.original && s.original !== 'N/A - new addition' && s.original !== 'N/A';
+
+      // Format fix text: if it contains newlines or "•/-" bullets, render as <ul>
+      const fixRaw = (s.fix || '').trim();
+      const lines = fixRaw.split(/\n+/).map(l => l.replace(/^[\-•]\s*/, '').trim()).filter(Boolean);
+      const fixHtml = lines.length > 1
+        ? `<ul class="fix-list">${lines.map(l => `<li>${sanitizeHTML(l)}</li>`).join('')}</ul>`
+        : `<span>${sanitizeHTML(fixRaw)}</span>`;
+
       return `<div class="suggestion-card priority-${p}">
         <div class="suggestion-header">
           <span class="suggestion-priority">${p.toUpperCase()}</span>
@@ -208,12 +222,18 @@ function renderSuggestions(suggestions, score) {
         </div>` : ''}
         <div class="suggestion-fix-block">
           <div class="suggestion-label">✏️ Replace with:</div>
-          <div class="fix-text">${sanitizeHTML(s.fix || '')}</div>
+          <div class="fix-text">${fixHtml}</div>
           <button class="copy-fix-btn" onclick="copyFix(this)">📋 Copy</button>
         </div>
-        ${s.score_impact ? `<div class="suggestion-impact">📈 ${sanitizeHTML(s.score_impact)}</div>` : ''}
       </div>`;
     }).join('');
+
+    // Show upgrade nudge if suggestions were capped
+    if (suggestions.length > maxSuggestions && score >= 55) {
+      body.innerHTML += `<div class="suggestions-nudge">
+        ✨ ${suggestions.length - maxSuggestions} more suggestion${suggestions.length - maxSuggestions > 1 ? 's' : ''} available — apply the fixes above and re-analyse to unlock them.
+      </div>`;
+    }
   }
   // Enable the suggestions button
   const btn = document.getElementById('suggestions-btn');

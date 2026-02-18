@@ -345,8 +345,7 @@ Return ONLY valid JSON, no explanation:
       "priority": "high|medium|low",
       "issue": "one sentence: what specific gap this fixes",
       "original": "the exact current text from their resume being replaced (or 'N/A - new addition')",
-      "fix": "the complete replacement text, ready to copy-paste into the resume as-is",
-      "score_impact": "which score component this improves and by roughly how much (e.g. +5-8pts Keyword Match)"
+      "fix": "the complete replacement text, ready to copy-paste into the resume as-is"
     }}
   ]
 }}

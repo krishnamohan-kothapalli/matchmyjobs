@@ -422,9 +422,8 @@ async function startAnalysis(){
 async function parseFile(file){
   const ext = file.name.split('.').pop().toLowerCase();
 
-  // ── PDF: use PDF.js for proper text extraction ──────────────────────────
+  // ── PDF: use PDF.js with line-reconstruction from y-coordinates ─────────
   if(ext === 'pdf'){
-    // Lazy-load PDF.js from CDN
     if(!window.pdfjsLib){
       await new Promise((res,rej)=>{
         const s=document.createElement('script');
@@ -438,15 +437,80 @@ async function parseFile(file){
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
     let fullText = '';
+
     for(let i=1; i<=pdf.numPages; i++){
-      const page = await pdf.getPage(i);
+      const page    = await pdf.getPage(i);
       const content = await page.getTextContent();
-      const pageText = content.items.map(item=>item.str).join(' ');
-      fullText += pageText + '\n';
+      const vp      = page.getViewport({scale: 1});
+
+      // Group text items by their y-position (same line = within 3px of each other)
+      const lineMap = new Map();
+      for(const item of content.items){
+        if(!item.str) continue;
+        const y = Math.round(vp.height - item.transform[5]); // flip PDF coords
+        // Find or create a bucket for this y-position (±3px tolerance)
+        let bucket = null;
+        for(const [key] of lineMap){
+          if(Math.abs(key - y) <= 3){ bucket = key; break; }
+        }
+        if(bucket === null){ lineMap.set(y, []); bucket = y; }
+        lineMap.get(bucket).push({ x: item.transform[4], str: item.str });
+      }
+
+      // Sort lines top-to-bottom, then items left-to-right within each line
+      const sortedYs = [...lineMap.keys()].sort((a,b) => a - b);
+      const pageLines = [];
+      for(const y of sortedYs){
+        const items = lineMap.get(y).sort((a,b) => a.x - b.x);
+        // Join items: add space between them unless one ends/starts with space
+        let line = '';
+        for(const item of items){
+          if(line && !line.endsWith(' ') && !item.str.startsWith(' '))
+            line += ' ';
+          line += item.str;
+        }
+        line = line.trim();
+        if(line) pageLines.push(line);
+      }
+
+      fullText += pageLines.join('\n') + '\n';
     }
-    if(!fullText || fullText.trim().length < 50)
+
+    // Post-process: join wrapped bullet/paragraph lines
+    // A line that doesn't start with a bullet, section header, or date is likely
+    // a continuation of the previous line — join it.
+    const lines    = fullText.split('\n');
+    const joined   = [];
+    const SECTION  = /^(SUMMARY|PROFESSIONAL EXPERIENCE|EXPERIENCE|SKILLS|TECHNICAL SKILLS|EDUCATION|CERTIFICATIONS?|PROJECTS?)/i;
+    const BULLET   = /^[●•\-\*▪►]/;
+    const HEADER   = /^[A-Z][A-Za-z ,&]+\s*\|/; // "Job Title | Company"
+    const DATELINE = /\b(20\d\d|19\d\d|Present|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+
+    for(const line of lines){
+      const trimmed = line.trim();
+      if(!trimmed){ joined.push(''); continue; }
+      // Always start a new line for: section headers, bullets, job/company lines
+      if(SECTION.test(trimmed) || BULLET.test(trimmed) ||
+         (HEADER.test(trimmed) && DATELINE.test(trimmed))){
+        joined.push(trimmed);
+      } else if(joined.length > 0 && joined[joined.length-1] !== ''){
+        // Continuation line — append to previous
+        const prev = joined[joined.length-1];
+        // But only if previous line doesn't look like a complete sentence ending
+        if(!prev.endsWith('.') && !SECTION.test(prev)){
+          joined[joined.length-1] = prev + ' ' + trimmed;
+        } else {
+          joined.push(trimmed);
+        }
+      } else {
+        joined.push(trimmed);
+      }
+    }
+
+    const result = joined.filter((l,i,a) => l || (a[i-1] !== '')).join('\n').trim();
+    if(!result || result.length < 50)
       throw new Error('Could not extract text from PDF. Try copy-pasting the text instead.');
-    return fullText;
+    return result;
   }
 
   // ── DOCX: use mammoth.js ─────────────────────────────────────────────────

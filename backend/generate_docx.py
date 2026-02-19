@@ -291,6 +291,131 @@ def _add(doc, p_el):
     else:                  body.append(p_el)
 
 
+
+# ─── PDF text normalizer ──────────────────────────────────────────────────────
+# PDF.js sometimes returns flat text (all items joined with spaces, no line breaks).
+# This function reconstructs proper line structure by splitting on known markers.
+
+_INLINE_SECTIONS = re.compile(
+    r'(?<=[a-z.!?,])\s+(SUMMARY|PROFESSIONAL EXPERIENCE|EXPERIENCE|SKILLS|'
+    r'TECHNICAL SKILLS|EDUCATION|CERTIFICATIONS?|PROFESSIONAL BACKGROUND)',
+    re.I
+)
+_INLINE_BULLETS = re.compile(r'\s+([●•▪►])\s+')
+_INLINE_JOB     = re.compile(
+    r'\s+([A-Z][A-Za-z &,/().-]{5,}\s*\|\s*[A-Za-z].*?\d{4})'
+)
+
+
+def normalize_resume_text(text):
+    """
+    Normalize resume text extracted from PDFs:
+    - Joins wrapped continuation lines into complete sentences/bullets
+    - Handles flat text (no newlines) by inserting structure markers
+    Safe to call on any text.
+    """
+    SECTION_RE = re.compile(
+        r"^(PROFESSIONAL SUMMARY|PROFESSIONAL EXPERIENCE|PROFESSIONAL BACKGROUND|"
+        r"TECHNICAL SKILLS|CORE COMPETENCIES|WORK HISTORY|EMPLOYMENT HISTORY|"
+        r"SUMMARY|EXPERIENCE|SKILLS|EDUCATION|CERTIFICATIONS?|CERTIFICATES?|"
+        r"PROJECTS?|ACHIEVEMENTS?|AWARDS?|REFERENCES|LANGUAGES|INTERESTS)\s*$",
+        re.I
+    )
+    BULLET_RE   = re.compile(r"^[\u25cf●•\-\*·\u25aa►\u25ba\u2023\u27a2\u2713\u25cb\u25c6]")
+    TITLE_DATE  = re.compile(r"\b(20\d\d|19\d\d|Present|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b", re.I)
+
+    lines = text.split("\n")
+
+    def is_new_paragraph(line, prev_line):
+        s = line.strip()
+        p = prev_line.strip() if prev_line else ""
+        if not s:
+            return True
+        # Always a new paragraph: section headers
+        if SECTION_RE.match(s):
+            return True
+        # Always a new paragraph: bullet points
+        if BULLET_RE.match(s):
+            return True
+        # Always a new paragraph: job/company lines (has | + date)
+        if "|" in s and TITLE_DATE.search(s):
+            return True
+        # Always a new paragraph if previous line IS a section header
+        if p and SECTION_RE.match(p):
+            return True
+        # Always a new paragraph if previous line ends with a period (complete sentence)
+        if p and p.endswith("."):
+            return True
+        # Always a new paragraph: skill category lines (contain colon + items)
+        # e.g. "Business Analysis & Documentation: BRD, FRD..."
+        if ":" in s and "," in s.split(":")[1] if ":" in s else False:
+            return True
+        # Always a new paragraph: short header-style lines
+        # (name, location, contact info - typically < 80 chars, no lowercase start)
+        if len(s) < 80 and (s[0].isupper() or s[0].isdigit()) and not p:
+            return True
+        # Contact/location line: starts with country or has pipe+phone/email pattern
+        if re.search(r'(?i)^\s*(USA|UK|India|Canada|\w+ State|\w+ City)|\|.*@|\|.*\d{9}', s):
+            return True
+        # If previous line is short (< 80 chars) and looks like a header line
+        # (name, subtitle), start a new paragraph
+        if p and len(p) < 80 and "|" in p:
+            return True
+        if p and len(p) < 50 and not p.endswith(",") and not any(c.islower() for c in p[:10]):
+            return True
+        # If this line starts with a country/location indicator
+        if re.match(r'(?i)^(USA|New York|Ohio|India|California|Texas|Florida|New Jersey|Remote)', s):
+            return True
+        # It's a continuation
+        return False
+
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            if result and result[-1] != "":
+                result.append("")
+            continue
+        prev = result[-1] if result else ""
+        if is_new_paragraph(stripped, prev):
+            result.append(stripped)
+        else:
+            # Append to previous line
+            if result:
+                prev_val = result[-1]
+                if prev_val.endswith("-"):
+                    result[-1] = prev_val[:-1] + stripped
+                elif prev_val:
+                    result[-1] = prev_val + " " + stripped
+                else:
+                    result.append(stripped)
+            else:
+                result.append(stripped)
+
+    text = "\n".join(result)
+
+    # Handle flat text (very few newlines after joining)
+    if text.count("\n") < 5:
+        SECTION_WORDS = [
+            "PROFESSIONAL EXPERIENCE", "TECHNICAL SKILLS", "PROFESSIONAL SUMMARY",
+            "PROFESSIONAL BACKGROUND", "WORK HISTORY", "EMPLOYMENT HISTORY",
+            "SUMMARY", "EXPERIENCE", "SKILLS", "EDUCATION",
+            "CERTIFICATIONS", "CERTIFICATION",
+        ]
+        for sec in SECTION_WORDS:
+            text = re.sub(
+                r"(\S)\s+(" + re.escape(sec) + r")\s",
+                lambda m, s=sec: m.group(1) + "\n\n" + s + "\n",
+                text, flags=re.I
+            )
+        text = re.sub(r"\s+([●•▪►])\s+(?=[A-Z])", r"\n\1 ", text)
+
+    text = re.sub(r" {2,}", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+
 # ─── Resume text parser ──────────────────────────────────────────────────────
 # IMPORTANT: Experience bullets often have NO bullet character prefix when they
 # come from the optimizer. We detect them by:
@@ -310,17 +435,17 @@ class ResumeData:
         self.certs     = []   # [{"name","issued"}]
 
 _SEC_RE = re.compile(
-    r"^(PROFESSIONAL SUMMARY|SUMMARY|SKILLS|TECHNICAL SKILLS|CORE COMPETENCIES|"
-    r"EXPERIENCE|WORK EXPERIENCE|WORK HISTORY|EMPLOYMENT HISTORY|"
-    r"EDUCATION|ACADEMIC BACKGROUND|"
-    r"CERTIFICATIONS?|CERTIFICATES?|LICENSES?|"
-    r"PROJECTS?|ACHIEVEMENTS?|AWARDS?|PUBLICATIONS?|"
-    r"VOLUNTEER|LANGUAGES|INTERESTS|REFERENCES|ADDITIONAL)$",
+    r"^(PROFESSIONAL SUMMARY|PROFESSIONAL EXPERIENCE|SUMMARY|SKILLS|TECHNICAL SKILLS|CORE COMPETENCIES|"
+    r"EXPERIENCE|WORK EXPERIENCE|WORK HISTORY|EMPLOYMENT HISTORY|PROFESSIONAL BACKGROUND|"
+    r"EDUCATION|ACADEMIC BACKGROUND|ACADEMIC QUALIFICATIONS|"
+    r"CERTIFICATIONS?|CERTIFICATES?|LICENSES?|CREDENTIALS|"
+    r"PROJECTS?|ACHIEVEMENTS?|AWARDS?|HONORS?|PUBLICATIONS?|"
+    r"VOLUNTEER|LANGUAGES|INTERESTS|HOBBIES|REFERENCES|ADDITIONAL|EXTRAS?)$",
     re.I,
 )
 
 # Lines that start with a bullet character
-_BULLET_PREFIX = re.compile(r"^[•\-\*·▪►▸‣➢✓○◆]\s*")
+_BULLET_PREFIX = re.compile(r"^[●•\-\*·▪►▸‣➢✓○◆]\s*")
 
 # Lines that look like a company+date (contain a date keyword)
 _DATE_RE = re.compile(
@@ -378,7 +503,8 @@ def parse_resume_text(text):
     def get_lines(name):
         key = None
         for k in sec_starts:
-            if k == name or k.startswith(name): key = k; break
+            # Match exact, prefix match, or suffix match (e.g. "EXPERIENCE" matches "PROFESSIONAL EXPERIENCE")
+            if k == name or k.startswith(name) or k.endswith(name): key = k; break
         if not key: return []
         idx   = sec_order.index(key)
         start = sec_starts[key] + 1
@@ -388,9 +514,23 @@ def parse_resume_text(text):
     # Header
     first_sec = sec_starts[sec_order[0]] if sec_order else len(lines)
     header    = [l.strip() for l in lines[:first_sec] if l.strip()]
-    if header:         data.name     = header[0]
-    if len(header) > 1: data.location = header[1]
-    if len(header) > 2: data.contacts = header[2:]
+    if header:
+        data.name = header[0]
+    if len(header) > 1:
+        line2 = header[1]
+        # If line2 contains contact info mixed with subtitle (e.g. "Subtitle USA | phone | email")
+        # split at the first | or • that precedes contact-like info
+        contact_mixed = re.search(r'(.+?)\s{2,}(\S.*(?:\d{9,}|@|USA|India|\bUSA\b).*)$', line2)
+        if contact_mixed:
+            data.location = contact_mixed.group(1).strip()
+            data.contacts = [contact_mixed.group(2).strip()] + header[2:]
+        elif "|" in line2 and re.search(r'\d{7,}|@', line2):
+            # Entire line2 is contact info
+            data.location = header[0].split("|")[0].strip() if "|" in header[0] else ""
+            data.contacts = [line2] + header[2:]
+        else:
+            data.location = line2
+            data.contacts = header[2:]
 
     # Summary
     sl = get_lines("PROFESSIONAL SUMMARY") or get_lines("SUMMARY")
@@ -466,11 +606,25 @@ def parse_resume_text(text):
         # Explicit bullet prefix
         if _BULLET_PREFIX.match(line):
             if cur: cur["bullets"].append(_BULLET_PREFIX.sub("", line).strip())
-            saw_company = True  # bullets only appear after company line
+            saw_company = True
             continue
 
-        # Company/date line
-        if _is_company_line(line):
+        # Check if this is a combined "Title | Company | Location | Date" line
+        # (all info on one pipe-separated line, has a date, has 3+ pipe segments)
+        if _DATE_RE.search(line) and line.count("|") >= 2:
+            parts = [p.strip() for p in line.split("|")]
+            # parts[0]=title, parts[1]=company, parts[2..]=location+date
+            title       = parts[0]
+            company     = parts[1]
+            date_loc    = " | ".join(parts[2:])
+            cur = {"title": title, "company": company,
+                   "date_location": date_loc, "bullets": []}
+            data.jobs.append(cur)
+            saw_company = True
+            continue
+
+        # Standard company/date line (separate from title, e.g. tab-separated or 2-part pipe)
+        if _is_company_line(line) and cur and not cur.get("company"):
             if "\t" in line:
                 company, rest = line.split("\t", 1)
             elif "|" in line:
@@ -479,9 +633,8 @@ def parse_resume_text(text):
                 m = re.search(r'\s{2,}', line)
                 company = line[:m.start()].strip() if m else line
                 rest    = line[m.end():].strip()    if m else ""
-            if cur and not cur.get("company"):
-                cur["company"]       = company.strip()
-                cur["date_location"] = rest.strip()
+            cur["company"]       = company.strip()
+            cur["date_location"] = rest.strip()
             saw_company = True
             continue
 
@@ -490,7 +643,12 @@ def parse_resume_text(text):
             cur["bullets"].append(line)
             continue
 
-        # Otherwise: job title
+        # Standard company/date line when no current job yet (shouldn't happen but guard)
+        if _is_company_line(line):
+            saw_company = True
+            continue
+
+        # Otherwise: standalone job title line
         cur = {"title": line, "company": "", "date_location": "", "bullets": []}
         data.jobs.append(cur)
         saw_company = False
@@ -542,8 +700,10 @@ def generate_docx(resume_text, template_path=None):
     """
     Build Rezi-style DOCX from resume_text (plain text, **bold** markers optional).
     template_path is accepted but ignored — fully self-contained.
+    Automatically normalizes flat PDF text before parsing.
     Returns bytes.
     """
+    resume_text = normalize_resume_text(resume_text)
     data = parse_resume_text(resume_text)
     doc  = _build_doc()
 

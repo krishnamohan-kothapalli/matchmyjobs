@@ -12,6 +12,7 @@ from models import AnalysisRequest
 from engine import nlp, run_analysis
 from auth_google import router as google_auth_router
 from optimizer import optimize_resume
+from generate_docx import normalize_resume_text
 
 # ---------------------------------------------------------------------------
 # Database imports — fail-safe so backend runs even if DB not configured
@@ -122,8 +123,11 @@ async def get_score(request: AnalysisRequest, db: Session = Depends(get_db)):
             logger.warning(f"Email {request.email} not found in database, allowing analysis")
     
     # ── Run analysis ────────────────────────────────────────────────────────
+    # Normalize text (handles flat PDF extraction from frontend)
+    resume_text_clean = normalize_resume_text(request.resume_text)
+
     try:
-        results = run_analysis(request.resume_text, request.jd_text, nlp)
+        results = run_analysis(resume_text_clean, request.jd_text, nlp)
         logger.info(
             "Analysis completed — score: %s, user: %s",
             results["score"],
@@ -170,6 +174,9 @@ async def optimize(request: OptimizeRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Resume and job description are required.")
     if len(request.resume_text) < 100:
         raise HTTPException(status_code=400, detail="Resume is too short.")
+
+    # Normalize text (handles flat PDF extraction from frontend)
+    request.resume_text = normalize_resume_text(request.resume_text)
 
     # ── Check optimization credits ──────────────────────────────────────────
     if request.email and DB_AVAILABLE:

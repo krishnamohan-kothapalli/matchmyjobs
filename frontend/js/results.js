@@ -749,7 +749,9 @@ function showOptimizeResult(result) {
             ? '✅ Your resume now scores <strong>80%+</strong> — ATS ready!'
             : improved
               ? `📈 Improved by <strong>${result.improvement}%</strong>. Download your optimized resume below.`
-              : '⚠️ Score unchanged — your resume may already be well-optimised or needs manual skill additions.'}
+              : result.original_score >= 65
+                ? '✅ Your resume is already well-optimized for this role. Download the formatted version below.'
+                : '⚠️ Score gap is large — this role needs accounting-specific keywords (GAAP, reconciliation, journal entries, month-end close). Download the improved version and add these manually.'}
         </p>
       </div>
 
